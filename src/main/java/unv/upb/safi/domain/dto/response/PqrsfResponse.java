@@ -1,7 +1,5 @@
 package unv.upb.safi.domain.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 
 import java.util.Date;
@@ -18,6 +16,5 @@ public class PqrsfResponse {
     private String description;
 
     private Date submissionDate;
-
 
 }

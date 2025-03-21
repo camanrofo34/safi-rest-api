@@ -1,6 +1,7 @@
 package unv.upb.safi.domain.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 @Getter
@@ -9,6 +10,6 @@ public class DependencyRequest {
     @NotBlank
     private String dependencyName;
 
-    @NotBlank
-    private String componentName;
+    @NotNull
+    private Long componentId;
 }

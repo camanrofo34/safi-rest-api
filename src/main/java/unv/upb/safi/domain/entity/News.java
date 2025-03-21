@@ -3,9 +3,10 @@ package unv.upb.safi.domain.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.Date;
-import java.util.Map;
+import java.util.Set;
 
 @Entity
 @NoArgsConstructor
@@ -17,15 +18,19 @@ public class News {
     private Long newsId;
 
     @Column(nullable = false)
+    @Setter
     private String newsTitle;
 
     @Column(nullable = false, columnDefinition = "TEXT")
+    @Setter
     private String newsContent;
 
     @Column(nullable = false)
+    @Setter
     private String urlNewsImage;
 
     @Column(nullable = false)
+    @Setter
     @Temporal(TemporalType.DATE)
     private Date newsDate;
 
@@ -35,5 +40,6 @@ public class News {
             joinColumns = @JoinColumn(name = "news_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
-    private Map<Long, Tag> tags;
+    @Setter
+    private Set<Tag> tags;
 }

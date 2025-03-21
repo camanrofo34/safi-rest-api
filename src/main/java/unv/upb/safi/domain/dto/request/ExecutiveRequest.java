@@ -25,8 +25,8 @@ public class ExecutiveRequest {
     private String password;
 
     @NotNull
-    private List<String> roles;
+    private List<Long> rolesId;
 
-    @NotBlank
-    private String departmentName;
+    @NotNull
+    private Long departmentId;
 }

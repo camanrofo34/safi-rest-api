@@ -13,5 +13,5 @@ public class CollegeRequest {
     private String name;
 
     @NotNull
-    private List<String> facultiesNames;
+    private List<Long> facultiesId;
 }

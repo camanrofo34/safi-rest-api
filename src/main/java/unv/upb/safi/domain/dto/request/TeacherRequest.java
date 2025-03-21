@@ -2,9 +2,11 @@ package unv.upb.safi.domain.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
 
 import java.util.List;
 
+@Getter
 public class TeacherRequest {
 
     @NotBlank
@@ -23,8 +25,8 @@ public class TeacherRequest {
     private String password;
 
     @NotNull
-    private List<String> roles;
+    private List<Long> rolesId;
 
     @NotBlank
-    private String collegeName;
+    private Long collegeId;
 }

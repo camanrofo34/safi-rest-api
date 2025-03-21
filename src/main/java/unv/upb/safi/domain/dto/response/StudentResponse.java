@@ -1,9 +1,6 @@
 package unv.upb.safi.domain.dto.response;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 import java.util.List;
 
@@ -22,5 +19,5 @@ public class StudentResponse {
 
     private List<String> roles;
 
-    private String facultyName;
+    private List<String> facultyName;
 }

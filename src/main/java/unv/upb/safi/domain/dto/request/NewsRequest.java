@@ -26,5 +26,5 @@ public class NewsRequest {
     private Date newsDate;
 
     @NotNull
-    private List<String> tagsNames;
+    private List<Long> tagsId;
 }

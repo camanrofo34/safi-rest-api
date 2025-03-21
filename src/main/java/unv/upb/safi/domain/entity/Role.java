@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Map;
+import java.util.Set;
 
 @Entity
 @NoArgsConstructor
@@ -27,5 +27,5 @@ public class Role {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     @Setter
-    private Map<Long, User> users;
+    private Set<User> users;
 }

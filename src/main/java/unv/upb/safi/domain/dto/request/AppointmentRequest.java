@@ -22,7 +22,4 @@ public class AppointmentRequest {
 
     @NotNull
     private Long executiveId;
-
-    @NotNull
-    private Long studentId;
 }

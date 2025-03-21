@@ -6,4 +6,5 @@ import unv.upb.safi.domain.entity.Tag;
 
 @Repository
 public interface TagRepository extends JpaRepository<Tag, Long> {
+
 }

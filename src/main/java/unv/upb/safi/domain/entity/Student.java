@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Map;
+import java.util.Set;
 
 @Entity
 @NoArgsConstructor
@@ -28,5 +28,5 @@ public class Student {
             inverseJoinColumns = @JoinColumn(name = "faculty_id")
     )
     @Setter
-    private Map<Long, Faculty> faculty;
+    private Set<Faculty> faculty;
 }

@@ -25,8 +25,8 @@ public class StudentRequest {
     private String password;
 
     @NotNull
-    private List<String> roles;
+    private List<Long> rolesId;
 
     @NotBlank
-    private String facultyName;
+    private List<Long> facultyId;
 }

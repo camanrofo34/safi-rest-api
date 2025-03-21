@@ -3,6 +3,7 @@ package unv.upb.safi.domain.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @NoArgsConstructor
@@ -14,9 +15,11 @@ public class Dependency {
     private Long dependencyId;
 
     @Column(nullable = false)
+    @Setter
     private String dependencyName;
 
     @ManyToOne
     @JoinColumn(nullable = false)
+    @Setter
     private Component component;
 }

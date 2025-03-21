@@ -11,5 +11,5 @@ public class CollegeResponse {
 
     private String name;
 
-    private List<String> facultiesNames;
+    private List<Long> facultiesId;
 }

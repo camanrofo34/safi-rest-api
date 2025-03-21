@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Map;
+import java.util.Set;
 
 @Entity
 @Table(name = "user")
@@ -43,5 +43,5 @@ public class User {
 
     @Setter
     @ManyToMany(fetch = FetchType.LAZY)
-    private Map<Long, Role> roles;
+    private Set<Role> roles;
 }
