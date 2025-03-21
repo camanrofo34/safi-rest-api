@@ -13,6 +13,6 @@ public class Component {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long componentId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String componentName;
 }

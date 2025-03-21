@@ -15,7 +15,7 @@ public class Tag {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long tagId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String tagName;
 
     @ManyToMany(mappedBy = "tags")

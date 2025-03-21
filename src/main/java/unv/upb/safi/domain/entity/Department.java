@@ -13,6 +13,6 @@ public class Department {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long departmentId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String departmentName;
 }

@@ -16,16 +16,12 @@ public class Faculty {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long facultyId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     @Setter
-    private String name;
+    private String facultyName;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(nullable = false)
     @Setter
     private College college;
-
-    @ManyToMany(mappedBy = "faculty")
-    @Setter
-    private Map<Long, Student> students;
 }
