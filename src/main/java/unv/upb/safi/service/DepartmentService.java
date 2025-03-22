@@ -5,14 +5,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.DepartmentRequest;
 import unv.upb.safi.domain.dto.response.DepartmentResponse;
 import unv.upb.safi.domain.entity.Department;
 import unv.upb.safi.exception.entityNotFoundException.DepartmentNotFoundException;
 import unv.upb.safi.repository.DepartmentRepository;
-
-import java.util.List;
 
 @Service
 public class DepartmentService {
@@ -25,6 +27,7 @@ public class DepartmentService {
         this.departmentRepository = departmentRepository;
     }
 
+    @Transactional
     public DepartmentResponse createDepartment(DepartmentRequest departmentRequest) {
         logger.info("Transaction ID: {}, Adding department {}",
                 MDC.get("transactionId"), departmentRequest.getDepartmentName());
@@ -43,8 +46,10 @@ public class DepartmentService {
         logger.info("Transaction ID: {}, Deleting department with id {}",
                 MDC.get("transactionId"), id);
 
-        if (!departmentRepository.existsById(id)) {
-            throw new DepartmentNotFoundException(id.toString());
+        Department department = getDepartmentByIdOrThrow(id);
+
+        if (!department.getExecutives().isEmpty()) {
+            throw new DataIntegrityViolationException("Cannot delete department with associated executives.");
         }
 
         departmentRepository.deleteById(id);
@@ -55,8 +60,7 @@ public class DepartmentService {
         logger.info("Transaction ID: {}, Updating department with id {}",
                 MDC.get("transactionId"), departmentId);
 
-        Department department = departmentRepository.findById(departmentId)
-                .orElseThrow(() -> new DepartmentNotFoundException(departmentId.toString()));
+        Department department = getDepartmentByIdOrThrow(departmentId);
 
         department.setDepartmentName(departmentRequest.getDepartmentName());
         department = departmentRepository.save(department);
@@ -69,26 +73,29 @@ public class DepartmentService {
         logger.info("Transaction ID: {}, Getting department with id {}",
                 MDC.get("transactionId"), departmentId);
 
-        Department department = departmentRepository.findById(departmentId)
-                .orElseThrow(() -> new DepartmentNotFoundException(departmentId.toString()));
+        Department department = getDepartmentByIdOrThrow(departmentId);
 
         return mapToResponse(department);
     }
 
-    public List<DepartmentResponse> getDepartments() {
+    public Page<DepartmentResponse> getDepartments(int page, int size, String sortBy, String direction) {
         logger.info("Transaction ID: {}, Getting all departments", MDC.get("transactionId"));
 
-        return departmentRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .toList();
+        return departmentRepository.findAll(
+                PageRequest.of(page, size,
+                        Sort.by(Sort.Direction.fromString(direction),
+                                sortBy)))
+                .map(this::mapToResponse);
     }
 
-    public List<DepartmentResponse> getDepartmentsByName(String name) {
+    public Page<DepartmentResponse> getDepartmentsByName(String name, int page, int size, String sortBy, String direction) {
         logger.info("Transaction ID: {}, Searching departments by name '{}'", MDC.get("transactionId"), name);
 
-        return departmentRepository.findByDepartmentNameIgnoreCase(name).stream()
-                .map(this::mapToResponse)
-                .toList();
+        return departmentRepository.findByDepartmentNameIgnoreCase(
+                name, PageRequest.of(page, size,
+                        Sort.by(Sort.Direction.fromString(direction),
+                                sortBy)))
+                .map(this::mapToResponse);
     }
 
     private DepartmentResponse mapToResponse(Department department) {
@@ -96,6 +103,11 @@ public class DepartmentService {
                 department.getDepartmentId(),
                 department.getDepartmentName()
         );
+    }
+
+    private Department getDepartmentByIdOrThrow(Long departmentId) {
+        return departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new DepartmentNotFoundException(departmentId.toString()));
     }
 }
 

@@ -7,4 +7,5 @@ public class ComponentResponse {
 
     private Long componentId;
     private String componentName;
+    private String componentDescription;
 }

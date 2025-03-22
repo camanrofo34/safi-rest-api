@@ -3,6 +3,7 @@ package unv.upb.safi.domain.dto.response;
 import lombok.AllArgsConstructor;
 
 import java.util.List;
+import java.util.Set;
 
 @AllArgsConstructor
 public class CollegeResponse {
@@ -11,5 +12,5 @@ public class CollegeResponse {
 
     private String name;
 
-    private List<Long> facultiesId;
+    private Set<Long> facultiesId;
 }

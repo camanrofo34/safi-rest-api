@@ -8,4 +8,7 @@ public class ComponentRequest {
 
     @NotBlank
     private String componentName;
+
+    @NotBlank
+    private String componentDescription;
 }

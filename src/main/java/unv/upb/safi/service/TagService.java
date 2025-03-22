@@ -1,9 +1,13 @@
 package unv.upb.safi.service;
 
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.TagRequest;
 import unv.upb.safi.domain.dto.response.TagResponse;
@@ -11,7 +15,6 @@ import unv.upb.safi.domain.entity.Tag;
 import unv.upb.safi.exception.entityNotFoundException.TagNotFoundException;
 import unv.upb.safi.repository.TagRepository;
 
-import java.util.List;
 
 @Service
 public class TagService {
@@ -25,6 +28,7 @@ public class TagService {
         this.tagRepository = tagRepository;
     }
 
+    @Transactional
     public TagResponse createTag(TagRequest tagRequest) {
         logger.info("Transaction ID: {}, Adding tag {}",
             MDC.get("transactionId") ,tagRequest.getTagName());
@@ -39,7 +43,7 @@ public class TagService {
     public TagResponse updateTag(Long tagId ,TagRequest tagRequest) {
         logger.info("Transaction ID: {}, Updating tag {}",
             MDC.get("transactionId") ,tagRequest.getTagName());
-            Tag tag = tagRepository.findById(tagId).orElseThrow(() -> new TagNotFoundException(tagId.toString()));
+            Tag tag = getTagByIdOrThrow(tagId);
             tag.setTagName(tagRequest.getTagName());
             tag = tagRepository.save(tag);
             logger.info("Transaction ID: {}, Tag updated successfully", MDC.get("transactionId"));
@@ -48,26 +52,26 @@ public class TagService {
 
     public TagResponse getTag(Long tagId) {
         logger.info("Transaction ID: {}, Getting tag with id: {}", MDC.get("transactionId"), tagId);
-            Tag tag = tagRepository.findById(tagId).orElseThrow(() -> new TagNotFoundException(tagId.toString()));
+            Tag tag = getTagByIdOrThrow(tagId);
             return mapToResponse(tag);
     }
 
+    @Transactional
     public void deleteTag(Long tagId) {
         logger.info("Transaction ID: {}, Deleting tag with id: {}", MDC.get("transactionId"), tagId);
-        if (!tagRepository.existsById(tagId)) {
-            throw new TagNotFoundException(tagId.toString());
-        }
-        tagRepository.deleteById(tagId);
+
+        Tag tag = getTagByIdOrThrow(tagId);
+
+        tagRepository.delete(tag);
         logger.info("Transaction ID: {}, Deleted tag {}", MDC.get("transactionId"), tagId);
     }
 
-    public List<TagResponse> getAllTags() {
+    public Page<TagResponse> getAllTags(int page, int size, String sortBy, String direction) {
         logger.info("Transaction ID: {}, Getting all tags", MDC.get("transactionId"));
-            List<Tag> tags = tagRepository.findAll();
 
-            return tags.stream().map(
-                this::mapToResponse
-            ).toList();
+        return tagRepository.findAll(
+            PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sortBy))
+        ).map(this::mapToResponse);
     }
 
 
@@ -76,5 +80,10 @@ public class TagService {
             tag.getTagId(),
             tag.getTagName()
         );
+    }
+
+    private Tag getTagByIdOrThrow(Long tagId) {
+        return tagRepository.findById(tagId)
+            .orElseThrow(() -> new TagNotFoundException(tagId.toString()));
     }
 }

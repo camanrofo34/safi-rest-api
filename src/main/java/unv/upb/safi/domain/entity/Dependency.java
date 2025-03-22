@@ -18,6 +18,10 @@ public class Dependency {
     @Setter
     private String dependencyName;
 
+    @Column(nullable = false)
+    @Setter
+    private String dependencyDescription;
+
     @ManyToOne
     @JoinColumn(nullable = false)
     @Setter

@@ -46,6 +46,7 @@ public class StudentService {
         this.roleRepository = roleRepository;
     }
 
+    @Transactional
     public StudentResponse registerStudent(StudentRequest studentRequest) {
         logger.info("Transaction Id: {}, Registering student: {}", MDC.get("transactionId"), studentRequest);
 
@@ -69,7 +70,7 @@ public class StudentService {
     public StudentResponse updateStudent(Long studentId, StudentRequest studentRequest) {
         logger.info("Transaction Id: {}, Updating student: {}", MDC.get("transactionId"), studentRequest);
 
-            Student student = studentRepository.findById(studentId).orElseThrow(() -> new RuntimeException("Student not found"));
+            Student student = getStudentByIdOrThrow(studentId);
 
             User user = mapToUser(studentRequest);
             userRepository.save(user);
@@ -91,10 +92,9 @@ public class StudentService {
     public void deleteStudent(Long studentId) {
         logger.info("Transaction Id: {}, Deleting student: {}", MDC.get("transactionId"), studentId);
 
-        if (!studentRepository.existsById(studentId)) {
-            throw new StudentNotFoundException(studentId.toString());
-        }
-        studentRepository.deleteById(studentId);
+        Student student = getStudentByIdOrThrow(studentId);
+
+        studentRepository.delete(student);
 
         logger.info("Transaction Id: {}, Student deleted successfully: {}", MDC.get("transactionId"), studentId);
 
@@ -103,7 +103,7 @@ public class StudentService {
     public StudentResponse getStudent(Long studentId) {
         logger.info("Transaction Id: {}, Fetching student: {}", MDC.get("transactionId"), studentId);
 
-            Student student = studentRepository.findById(studentId).orElseThrow(() -> new StudentNotFoundException("Student not found"));
+            Student student = getStudentByIdOrThrow(studentId);
 
             return mapToResponse(student);
     }
@@ -136,5 +136,10 @@ public class StudentService {
             student.getUser().getRoles().stream().map(Role::getName).toList(),
             student.getFaculty().stream().map(Faculty::getFacultyName).toList()
         );
+    }
+
+    private Student getStudentByIdOrThrow(Long studentId) {
+        return studentRepository.findById(studentId)
+                .orElseThrow(() -> new StudentNotFoundException(studentId.toString()));
     }
 }

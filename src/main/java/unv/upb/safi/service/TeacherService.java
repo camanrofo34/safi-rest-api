@@ -1,12 +1,17 @@
 package unv.upb.safi.service;
 
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.TeacherRequest;
 import unv.upb.safi.domain.dto.response.TeacherResponse;
+import unv.upb.safi.domain.entity.College;
 import unv.upb.safi.domain.entity.Role;
 import unv.upb.safi.domain.entity.User;
 import unv.upb.safi.exception.entityNotFoundException.CollegeNotFoundException;
@@ -41,63 +46,61 @@ public class TeacherService {
         this.roleRepository = roleRepository;
     }
 
+    @Transactional
     public TeacherResponse   registerTeacher(TeacherRequest teacherRequest) {
         logger.info("Transaction Id: {}, Registering teacher: {}", MDC.get("transactionId"), teacherRequest);
-            User user = mapToUser(teacherRequest);
-            user = userRepository.save(user);
+        User user = mapToUser(teacherRequest);
+        user = userRepository.save(user);
 
-            Teacher teacher = new Teacher();
-            teacher.setUser(user);
-            teacher.setCollege(collegeRepository.findById(teacherRequest.getCollegeId()).orElseThrow(() -> new CollegeNotFoundException(teacherRequest.getCollegeId().toString())));
+        Teacher teacher = new Teacher();
+        teacher.setUser(user);
+        teacher.setCollege(getCollegeByIdOrThrow(teacherRequest.getCollegeId()));
 
-            teacherRepository.save(teacher);
-            logger.info("Transaction Id: {}, Registered teacher: {}", MDC.get("transactionId"), teacherRequest);
-            return mapToResponse(teacher);
+        teacherRepository.save(teacher);
+        logger.info("Transaction Id: {}, Registered teacher: {}", MDC.get("transactionId"), teacherRequest);
+        return mapToResponse(teacher);
     }
 
     public TeacherResponse getTeacher(Long teacherId) {
         logger.info("Transaction ID: {}, Getting teacher with id: {}", MDC.get("transactionId"), teacherId);
 
-            Teacher teacher = teacherRepository.findById(teacherId).orElseThrow(() -> new TeacherNotFoundException(teacherId.toString()));
-            logger.info("Transaction Id: {}, Getted teacher: {}", MDC.get("transactionId"), teacherId);
-            return mapToResponse(teacher);
+        Teacher teacher = getTeacherByIdOrThrow(teacherId);
+        logger.info("Transaction Id: {}, Getted teacher: {}", MDC.get("transactionId"), teacherId);
+        return mapToResponse(teacher);
     }
 
     public TeacherResponse updateTeacher(Long teacherId, TeacherRequest teacherRequest) {
         logger.info("Transaction ID: {}, Updating teacher: {}", MDC.get("transactionId"), teacherRequest);
 
-            Teacher teacher = teacherRepository.findById(teacherId).orElseThrow(() -> {
-                return new TeacherNotFoundException(teacherId.toString());
-            });
+        Teacher teacher = getTeacherByIdOrThrow(teacherId);
 
-            User user = mapToUser(teacherRequest);
-            user = userRepository.save(user);
+        User user = mapToUser(teacherRequest);
+        user = userRepository.save(user);
+        teacher.setUser(user);
+        teacher.setCollege(getCollegeByIdOrThrow(teacherRequest.getCollegeId()));
+        teacherRepository.save(teacher);
 
-            teacher.setCollege(collegeRepository.findById(teacherRequest.getCollegeId()).orElseThrow(() -> new CollegeNotFoundException(teacherRequest.getCollegeId().toString())));
-            teacherRepository.save(teacher);
-            logger.info("Transaction Id: {}, Updated teacher: {}", MDC.get("transactionId"), teacherRequest);
-            return mapToResponse(teacher);
+        logger.info("Transaction Id: {}, Updated teacher: {}", MDC.get("transactionId"), teacherRequest);
+        return mapToResponse(teacher);
 
     }
 
+    @Transactional
     public void deleteTeacher(Long teacherId) {
         logger.info("Transaction ID: {}, Deleting teacher with id: {}", MDC.get("transactionId"), teacherId);
 
-        if (!teacherRepository.existsById(teacherId)) {
-            throw new TeacherNotFoundException(teacherId.toString());
-        }
+        Teacher teacher = getTeacherByIdOrThrow(teacherId);
 
-            teacherRepository.deleteById(teacherId);
-            logger.info("Transaction ID: {}, Deleted teacher: {}", MDC.get("transactionId"), teacherId);
+        teacherRepository.delete(teacher);
+        logger.info("Transaction ID: {}, Deleted teacher: {}", MDC.get("transactionId"), teacherId);
     }
 
-    public List<TeacherResponse> getAllTeachers(){
+    public Page<TeacherResponse> getAllTeachers(int page, int size, String sortBy, String direction){
         logger.info("Transaction ID: {}, Getting all teachers", MDC.get("transactionId"));
-            List<Teacher> teachers = teacherRepository.findAll();
 
-            return teachers.stream().map(
-                this::mapToResponse
-            ).toList();
+        return teacherRepository.findAll(
+                PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sortBy))
+        ).map(this::mapToResponse);
     }
 
     private User mapToUser(TeacherRequest teacherRequest) {
@@ -128,5 +131,15 @@ public class TeacherService {
             teacher.getUser().getRoles().stream().map(Role::getName).toList(),
             teacher.getCollege().getName()
         );
+    }
+
+    private Teacher getTeacherByIdOrThrow(Long teacherId) {
+        return teacherRepository.findById(teacherId)
+                .orElseThrow(() -> new TeacherNotFoundException(teacherId.toString()));
+    }
+
+    private College getCollegeByIdOrThrow(Long collegeId) {
+        return collegeRepository.findById(collegeId)
+                .orElseThrow(() -> new CollegeNotFoundException(collegeId.toString()));
     }
 }

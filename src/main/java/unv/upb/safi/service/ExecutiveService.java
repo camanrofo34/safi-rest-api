@@ -5,6 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.ExecutiveRequest;
 import unv.upb.safi.domain.dto.response.ExecutiveResponse;
@@ -46,6 +49,7 @@ public class ExecutiveService {
         this.departmentRepository = departmentRepository;
     }
 
+    @Transactional
     public ExecutiveResponse createExecutive(ExecutiveRequest executiveRequest) {
         logger.info("Transaction ID: {}, Adding executive {}",
             MDC.get("transactionId") ,executiveRequest.getFirstName());
@@ -54,8 +58,7 @@ public class ExecutiveService {
 
             user = userRepository.save(user);
 
-            Department department = departmentRepository.findById(executiveRequest.getDepartmentId()).orElseThrow(() -> new DepartmentNotFoundException(executiveRequest.getDepartmentId().toString()));
-
+            Department department = getDepartmentByIdOrThrow(executiveRequest.getDepartmentId());
             Executive executive = new Executive();
             executive.setUser(user);
             executive.setDepartment(department);
@@ -68,11 +71,11 @@ public class ExecutiveService {
         logger.info("Transaction ID: {}, Updating executive {}",
             MDC.get("transactionId") ,executiveRequest.getFirstName());
 
-            Executive executive = executiveRepository.findById(executiveId).orElseThrow(() -> new DepartmentNotFoundException(executiveId.toString()));
+            Executive executive = getExecutiveByIdOrThrow(executiveId);
             User user = mapToUser(executiveRequest);
             userRepository.save(user);
 
-            Department department = departmentRepository.findById(executiveRequest.getDepartmentId()).orElseThrow(() -> new DepartmentNotFoundException(executiveRequest.getDepartmentId().toString()));
+            Department department = getDepartmentByIdOrThrow(executiveRequest.getDepartmentId());
 
             executive.setDepartment(department);
             executiveRepository.save(executive);
@@ -86,31 +89,28 @@ public class ExecutiveService {
         logger.info("Transaction ID: {}, Deleting executive with id {}",
             MDC.get("transactionId") ,id);
 
-        if (!executiveRepository.existsById(id)) {
-            throw new DepartmentNotFoundException(id.toString());
-        }
-            executiveRepository.deleteById(id);
+        Executive executive = getExecutiveByIdOrThrow(id);
 
-            logger.info("Transaction ID: {}, Deleted executive {}", MDC.get("transactionId"), id);
+        executiveRepository.delete(executive);
+
+        logger.info("Transaction ID: {}, Deleted executive {}", MDC.get("transactionId"), id);
     }
 
     public ExecutiveResponse getExecutive(Long id) {
         logger.info("Transaction ID: {}, Getting executive with id {}",
             MDC.get("transactionId") ,id);
-            Executive executive = executiveRepository.findById(id).orElseThrow(
-                    () -> new DepartmentNotFoundException(id.toString())
-            );
+            Executive executive = getExecutiveByIdOrThrow(id);
             logger.info("Transaction ID: {}, Executive found", MDC.get("transactionId"));
             return mapToResponse(executive);
     }
 
-    public List<ExecutiveResponse> getExecutives() {
+    public Page<ExecutiveResponse> getExecutives(int page, int size, String sortBy, String direction) {
         logger.info("Transaction ID: {}, Getting all executives",
             MDC.get("transactionId"));
-            List<Executive> executives = executiveRepository.findAll();
-            return executives.stream()
-                .map(this::mapToResponse)
-                .toList();
+
+        return executiveRepository.findAll(
+            PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sortBy))
+        ).map(this::mapToResponse);
     }
 
     private User mapToUser(ExecutiveRequest executiveRequest) {
@@ -143,6 +143,16 @@ public class ExecutiveService {
             user.getRoles().stream().map(Role::getName).toList(),
             department.getDepartmentName()
         );
+    }
+
+    private Executive getExecutiveByIdOrThrow(Long executiveId) {
+        return executiveRepository.findById(executiveId)
+                .orElseThrow(() -> new DepartmentNotFoundException(executiveId.toString()));
+    }
+
+    private Department getDepartmentByIdOrThrow(Long departmentId) {
+        return departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new DepartmentNotFoundException(departmentId.toString()));
     }
 
 }

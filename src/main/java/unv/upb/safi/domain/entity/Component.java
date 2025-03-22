@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Set;
+
 @NoArgsConstructor
 @Getter
 @Entity
@@ -17,4 +19,13 @@ public class Component {
     @Column(nullable = false, unique = true)
     @Setter
     private String componentName;
+
+    @Column(nullable = false)
+    @Setter
+    private String componentDescription;
+
+    @OneToMany
+    @JoinColumn(name = "component_id")
+    @Setter
+    private Set<Dependency> dependencies;
 }

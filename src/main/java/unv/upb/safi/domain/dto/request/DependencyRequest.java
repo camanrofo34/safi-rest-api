@@ -12,4 +12,8 @@ public class DependencyRequest {
 
     @NotNull
     private Long componentId;
+
+    @NotBlank
+    private String dependencyDescription;
+
 }

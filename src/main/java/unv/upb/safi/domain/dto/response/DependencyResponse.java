@@ -12,4 +12,6 @@ public class DependencyResponse {
     private String dependencyName;
 
     private String componentName;
+
+    private String dependencyDescription;
 }

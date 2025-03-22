@@ -26,9 +26,11 @@ public class WeeklyMenuService {
         this.weeklyMenuRepository = weeklyMenuRepository;
     }
 
+    @Transactional
     public WeeklyMenuResponse createWeeklyMenu (WeeklyMenuRequest weeklyMenuRequest) {
         logger.info("Transaction ID: {}, Adding weekly menu {}",
                 MDC.get("transactionId") ,weeklyMenuRequest.getRestaurantName());
+
             WeeklyMenu weeklyMenu = new WeeklyMenu();
             weeklyMenu.setRestaurantName(weeklyMenuRequest.getRestaurantName());
             weeklyMenu.setRestaurantLink(weeklyMenuRequest.getRestaurantLink());
@@ -43,7 +45,7 @@ public class WeeklyMenuService {
         logger.info("Transaction ID: {}, Updating weekly menu {}",
                 MDC.get("transactionId"), weeklyMenuRequest.getRestaurantName());
 
-        WeeklyMenu weeklyMenu = weeklyMenuRepository.findById(weeklyMenuId).orElseThrow(() -> new WeeklyMenuNotFoundException(weeklyMenuId.toString()));
+        WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
 
         weeklyMenu.setRestaurantName(weeklyMenuRequest.getRestaurantName());
         weeklyMenu.setRestaurantLink(weeklyMenuRequest.getRestaurantLink());
@@ -58,11 +60,9 @@ public class WeeklyMenuService {
     public void deleteWeeklyMenu (Long weeklyMenuId) {
         logger.info("Transaction ID: {}, Deleting weekly menu with id: {}", MDC.get("transactionId"), weeklyMenuId);
 
-        if (!weeklyMenuRepository.existsById(weeklyMenuId)) {
-            throw new WeeklyMenuNotFoundException(weeklyMenuId.toString());
-        }
+        WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
 
-        weeklyMenuRepository.deleteById(weeklyMenuId);
+        weeklyMenuRepository.delete(weeklyMenu);
 
         logger.info("Transaction ID: {}, Deleted weekly menu with id: {}", MDC.get("transactionId"), weeklyMenuId);
     }
@@ -70,9 +70,7 @@ public class WeeklyMenuService {
     public WeeklyMenuResponse getWeeklyMenu (Long weeklyMenuId) {
         logger.info("Transaction ID: {}, Getting weekly menu with id: {}", MDC.get("transactionId"), weeklyMenuId);
 
-            WeeklyMenu weeklyMenu = weeklyMenuRepository.findById(weeklyMenuId).orElseThrow(() -> {
-                return new WeeklyMenuNotFoundException(weeklyMenuId.toString());
-            });
+            WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
             return mapToResponse(weeklyMenu);
     }
 
@@ -92,5 +90,10 @@ public class WeeklyMenuService {
                 weeklyMenu.getMenuLink(),
                 weeklyMenu.getRestaurantLink()
         );
+    }
+
+    private WeeklyMenu getWeeklyMenuByIdOrThrow(Long weeklyMenuId) {
+        return weeklyMenuRepository.findById(weeklyMenuId)
+                .orElseThrow(() -> new WeeklyMenuNotFoundException(weeklyMenuId.toString()));
     }
 }
