@@ -1,13 +1,9 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.TeacherRequest;
 import unv.upb.safi.domain.dto.response.TeacherResponse;
@@ -19,6 +15,7 @@ import unv.upb.safi.exception.entityNotFoundException.TeacherNotFoundException;
 import unv.upb.safi.repository.*;
 import unv.upb.safi.domain.entity.Teacher;
 import unv.upb.safi.service.TeacherService;
+import unv.upb.safi.util.SearchNormalizerUtil;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,23 +31,24 @@ public class TeacherServiceImpl implements TeacherService {
 
     private final RoleRepository roleRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(TeacherServiceImpl.class);
+    private final SearchNormalizerUtil searchNormalizerUtil;
 
     @Autowired
     public TeacherServiceImpl(TeacherRepository teacherRepository,
                               UserRepository userRepository,
                               CollegeRepository collegeRepository,
-                              RoleRepository roleRepository) {
+                              RoleRepository roleRepository,
+                              SearchNormalizerUtil searchNormalizerUtil) {
         this.teacherRepository = teacherRepository;
         this.userRepository = userRepository;
         this.collegeRepository = collegeRepository;
         this.roleRepository = roleRepository;
+        this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
     @Transactional
     @Override
     public TeacherResponse   registerTeacher(TeacherRequest teacherRequest) {
-        logger.info("Transaction Id: {}, Registering teacher: {}", MDC.get("transactionId"), teacherRequest);
         User user = mapToUser(teacherRequest);
         user = userRepository.save(user);
 
@@ -58,24 +56,19 @@ public class TeacherServiceImpl implements TeacherService {
         teacher.setUser(user);
         teacher.setCollege(getCollegeByIdOrThrow(teacherRequest.getCollegeId()));
 
-        teacherRepository.save(teacher);
-        logger.info("Transaction Id: {}, Registered teacher: {}", MDC.get("transactionId"), teacherRequest);
+        teacher = teacherRepository.save(teacher);
         return mapToResponse(teacher);
     }
 
     @Override
     public TeacherResponse getTeacher(Long teacherId) {
-        logger.info("Transaction ID: {}, Getting teacher with id: {}", MDC.get("transactionId"), teacherId);
-
         Teacher teacher = getTeacherByIdOrThrow(teacherId);
-        logger.info("Transaction Id: {}, Getted teacher: {}", MDC.get("transactionId"), teacherId);
+
         return mapToResponse(teacher);
     }
 
     @Override
     public TeacherResponse updateTeacher(Long teacherId, TeacherRequest teacherRequest) {
-        logger.info("Transaction ID: {}, Updating teacher: {}", MDC.get("transactionId"), teacherRequest);
-
         Teacher teacher = getTeacherByIdOrThrow(teacherId);
 
         User user = mapToUser(teacherRequest);
@@ -84,7 +77,6 @@ public class TeacherServiceImpl implements TeacherService {
         teacher.setCollege(getCollegeByIdOrThrow(teacherRequest.getCollegeId()));
         teacherRepository.save(teacher);
 
-        logger.info("Transaction Id: {}, Updated teacher: {}", MDC.get("transactionId"), teacherRequest);
         return mapToResponse(teacher);
 
     }
@@ -92,20 +84,21 @@ public class TeacherServiceImpl implements TeacherService {
     @Transactional
     @Override
     public void deleteTeacher(Long teacherId) {
-        logger.info("Transaction ID: {}, Deleting teacher with id: {}", MDC.get("transactionId"), teacherId);
-
         Teacher teacher = getTeacherByIdOrThrow(teacherId);
 
         teacherRepository.delete(teacher);
-        logger.info("Transaction ID: {}, Deleted teacher: {}", MDC.get("transactionId"), teacherId);
     }
 
     @Override
-    public Page<TeacherResponse> getAllTeachers(int page, int size, String sortBy, Sort.Direction direction){
-        logger.info("Transaction ID: {}, Getting all teachers", MDC.get("transactionId"));
+    public Page<TeacherResponse> getAllTeachers(Pageable pageable){
+        return teacherRepository.findAll(pageable).map(this::mapToResponse);
+    }
 
-        return teacherRepository.findAll(
-                PageRequest.of(page, size, Sort.by(direction, sortBy))
+    @Override
+    public Page<TeacherResponse> getTeachersByName(String name, Pageable pageable) {
+        return teacherRepository.findByTeacherNameContainingIgnoreCase(
+                searchNormalizerUtil.normalize(name),
+                pageable
         ).map(this::mapToResponse);
     }
 

@@ -12,4 +12,7 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
 
     @NonNull
     Page<Tag> findAll(@NonNull Pageable pageable);
+
+    @NonNull
+    Page<Tag> findByTagNameContainingIgnoreCase(@NonNull String name, @NonNull Pageable pageable);
 }

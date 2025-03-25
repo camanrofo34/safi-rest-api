@@ -1,13 +1,9 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.ExecutiveRequest;
 import unv.upb.safi.domain.dto.response.ExecutiveResponse;
@@ -21,6 +17,7 @@ import unv.upb.safi.repository.ExecutiveRepository;
 import unv.upb.safi.repository.RoleRepository;
 import unv.upb.safi.repository.UserRepository;
 import unv.upb.safi.service.ExecutiveService;
+import unv.upb.safi.util.SearchNormalizerUtil;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,26 +33,24 @@ public class ExecutiveServiceImpl implements ExecutiveService {
 
     private final DepartmentRepository departmentRepository;
 
-
-    private final Logger logger = LoggerFactory.getLogger(ExecutiveServiceImpl.class);
+    private final SearchNormalizerUtil searchNormalizerUtil;
 
     @Autowired
     public ExecutiveServiceImpl(ExecutiveRepository executiveRepository,
                                 UserRepository userRepository,
                                 RoleRepository roleRepository,
-                                DepartmentRepository departmentRepository) {
+                                DepartmentRepository departmentRepository,
+                                SearchNormalizerUtil searchNormalizerUtil) {
         this.executiveRepository = executiveRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.departmentRepository = departmentRepository;
+        this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
     @Transactional
     @Override
     public ExecutiveResponse createExecutive(ExecutiveRequest executiveRequest) {
-        logger.info("Transaction ID: {}, Adding executive {}",
-            MDC.get("transactionId") ,executiveRequest.getFirstName());
-
             User user = mapToUser(executiveRequest);
 
             user = userRepository.save(user);
@@ -64,15 +59,13 @@ public class ExecutiveServiceImpl implements ExecutiveService {
             Executive executive = new Executive();
             executive.setUser(user);
             executive.setDepartment(department);
-            executiveRepository.save(executive);
-            logger.info("Transaction ID: {}, Executive added successfully", MDC.get("transactionId"));
+            executive = executiveRepository.save(executive);
+
             return mapToResponse(executive);
     }
 
     @Override
     public ExecutiveResponse updateExecutive(Long executiveId, ExecutiveRequest executiveRequest) {
-        logger.info("Transaction ID: {}, Updating executive {}",
-            MDC.get("transactionId") ,executiveRequest.getFirstName());
 
             Executive executive = getExecutiveByIdOrThrow(executiveId);
             User user = mapToUser(executiveRequest);
@@ -81,42 +74,38 @@ public class ExecutiveServiceImpl implements ExecutiveService {
             Department department = getDepartmentByIdOrThrow(executiveRequest.getDepartmentId());
 
             executive.setDepartment(department);
-            executiveRepository.save(executive);
+            executive = executiveRepository.save(executive);
 
-            logger.info("Transaction ID: {}, Executive updated successfully", MDC.get("transactionId"));
             return mapToResponse(executive);
     }
 
     @Transactional
     @Override
     public void deleteExecutive(Long id) {
-        logger.info("Transaction ID: {}, Deleting executive with id {}",
-            MDC.get("transactionId") ,id);
-
         Executive executive = getExecutiveByIdOrThrow(id);
 
         executiveRepository.delete(executive);
-
-        logger.info("Transaction ID: {}, Deleted executive {}", MDC.get("transactionId"), id);
     }
 
     @Override
     public ExecutiveResponse getExecutive(Long id) {
-        logger.info("Transaction ID: {}, Getting executive with id {}",
-            MDC.get("transactionId") ,id);
+
             Executive executive = getExecutiveByIdOrThrow(id);
-            logger.info("Transaction ID: {}, Executive found", MDC.get("transactionId"));
+
             return mapToResponse(executive);
     }
 
     @Override
-    public Page<ExecutiveResponse> getExecutives(int page, int size, String sortBy, Sort.Direction direction) {
-        logger.info("Transaction ID: {}, Getting all executives",
-            MDC.get("transactionId"));
+    public Page<ExecutiveResponse> getExecutives(Pageable pageable) {
+        return executiveRepository.findAll(pageable)
+        .map(this::mapToResponse);
+    }
 
-        return executiveRepository.findAll(
-            PageRequest.of(page, size, Sort.by(direction, sortBy))
-        ).map(this::mapToResponse);
+    @Override
+    public Page<ExecutiveResponse> getExecutivesByExecutiveName(String name, Pageable pageable) {
+        return executiveRepository.findExecutiveNameContainingIgnoreCase(
+                searchNormalizerUtil.normalize(name), pageable)
+                .map(this::mapToResponse);
     }
 
     private User mapToUser(ExecutiveRequest executiveRequest) {

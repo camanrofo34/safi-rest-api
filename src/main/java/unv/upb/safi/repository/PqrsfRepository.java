@@ -9,6 +9,8 @@ import unv.upb.safi.domain.entity.Pqrsf;
 
 @Repository
 public interface PqrsfRepository extends JpaRepository<Pqrsf, Long> {
+
     @NonNull
     Page<Pqrsf> findAll(@NonNull Pageable pageable);
+
 }

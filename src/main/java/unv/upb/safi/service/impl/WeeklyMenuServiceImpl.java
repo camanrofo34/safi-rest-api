@@ -22,8 +22,6 @@ public class WeeklyMenuServiceImpl implements WeeklyMenuService {
 
     private final WeeklyMenuRepository weeklyMenuRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(WeeklyMenuServiceImpl.class);
-
     @Autowired
     public WeeklyMenuServiceImpl(WeeklyMenuRepository weeklyMenuRepository) {
         this.weeklyMenuRepository = weeklyMenuRepository;
@@ -32,63 +30,48 @@ public class WeeklyMenuServiceImpl implements WeeklyMenuService {
     @Transactional
     @Override
     public WeeklyMenuResponse createWeeklyMenu(WeeklyMenuRequest weeklyMenuRequest) {
-        logger.info("Transaction ID: {}, Adding weekly menu {}",
-                MDC.get("transactionId") ,weeklyMenuRequest.getRestaurantName());
-
             WeeklyMenu weeklyMenu = new WeeklyMenu();
             weeklyMenu.setRestaurantName(weeklyMenuRequest.getRestaurantName());
             weeklyMenu.setRestaurantLink(weeklyMenuRequest.getRestaurantLink());
             weeklyMenu.setMenuLink(weeklyMenuRequest.getMenuLink());
             weeklyMenu = weeklyMenuRepository.save(weeklyMenu);
 
-            logger.info("Transaction ID: {}, Weekly menu added", MDC.get("transactionId"));
             return mapToResponse(weeklyMenu);
     }
 
     @Override
     public WeeklyMenuResponse updateWeeklyMenu(Long weeklyMenuId, WeeklyMenuRequest weeklyMenuRequest) {
-        logger.info("Transaction ID: {}, Updating weekly menu {}",
-                MDC.get("transactionId"), weeklyMenuRequest.getRestaurantName());
-
         WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
 
         weeklyMenu.setRestaurantName(weeklyMenuRequest.getRestaurantName());
         weeklyMenu.setRestaurantLink(weeklyMenuRequest.getRestaurantLink());
         weeklyMenu.setMenuLink(weeklyMenuRequest.getMenuLink());
-        weeklyMenuRepository.save(weeklyMenu);
+        weeklyMenu = weeklyMenuRepository.save(weeklyMenu);
 
-        logger.info("Transaction ID: {}, Weekly menu updated", MDC.get("transactionId"));
-            return mapToResponse(weeklyMenu);
+        return mapToResponse(weeklyMenu);
     }
 
     @Transactional
     @Override
     public void deleteWeeklyMenu(Long weeklyMenuId) {
-        logger.info("Transaction ID: {}, Deleting weekly menu with id: {}", MDC.get("transactionId"), weeklyMenuId);
-
         WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
 
         weeklyMenuRepository.delete(weeklyMenu);
-
-        logger.info("Transaction ID: {}, Deleted weekly menu with id: {}", MDC.get("transactionId"), weeklyMenuId);
     }
 
     @Override
     public WeeklyMenuResponse getWeeklyMenu(Long weeklyMenuId) {
-        logger.info("Transaction ID: {}, Getting weekly menu with id: {}", MDC.get("transactionId"), weeklyMenuId);
+        WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
 
-            WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
-            return mapToResponse(weeklyMenu);
+        return mapToResponse(weeklyMenu);
     }
 
     @Override
     public Set<WeeklyMenuResponse> getAllWeeklyMenu(){
-        logger.info("Transaction ID: {}, Getting all weekly menu", MDC.get("transactionId"));
-            List<WeeklyMenu> weeklyMenus = weeklyMenuRepository.findAll();
+        List<WeeklyMenu> weeklyMenus = weeklyMenuRepository.findAll();
 
-            return weeklyMenus.stream().map(
-                    this::mapToResponse
-            ).collect(Collectors.toSet());
+        return weeklyMenus.stream().map(this::mapToResponse)
+                .collect(Collectors.toSet());
     }
 
     private WeeklyMenuResponse mapToResponse(WeeklyMenu weeklyMenu) {

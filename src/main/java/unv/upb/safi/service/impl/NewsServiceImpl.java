@@ -1,13 +1,9 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.NewsRequest;
 import unv.upb.safi.domain.dto.response.NewsResponse;
@@ -17,6 +13,7 @@ import unv.upb.safi.exception.entityNotFoundException.NewsNotFoundException;
 import unv.upb.safi.repository.NewsRepository;
 import unv.upb.safi.repository.TagRepository;
 import unv.upb.safi.service.NewsService;
+import unv.upb.safi.util.SearchNormalizerUtil;
 
 import java.util.*;
 
@@ -25,18 +22,20 @@ public class NewsServiceImpl implements NewsService {
 
     private final NewsRepository newsRepository;
     private final TagRepository tagRepository;
-    private final Logger logger = LoggerFactory.getLogger(NewsServiceImpl.class);
+    private final SearchNormalizerUtil searchNormalizerUtil;
 
     @Autowired
-    public NewsServiceImpl(NewsRepository newsRepository, TagRepository tagRepository) {
+    public NewsServiceImpl(NewsRepository newsRepository,
+                           TagRepository tagRepository,
+                           SearchNormalizerUtil searchNormalizerUtil) {
         this.newsRepository = newsRepository;
         this.tagRepository = tagRepository;
+        this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
     @Transactional
     @Override
     public NewsResponse createNews(NewsRequest newsRequest) {
-        logger.info("Transaction ID: {}, Adding news {}", MDC.get("transactionId"), newsRequest.getNewsTitle());
         News news = new News();
         news.setNewsTitle(newsRequest.getNewsTitle());
         news.setNewsContent(newsRequest.getNewsContent());
@@ -47,13 +46,12 @@ public class NewsServiceImpl implements NewsService {
         news.setTags(tags);
 
         news = newsRepository.save(news);
-        logger.info("Transaction ID: {}, News added successfully", MDC.get("transactionId"));
+
         return mapToResponse(news);
     }
 
     @Override
     public NewsResponse updateNews(Long newsId, NewsRequest newsRequest) {
-        logger.info("Transaction ID: {}, Updating news with id {}", MDC.get("transactionId"), newsId);
         News news = getNewsByIdOrThrow(newsId);
 
         news.setNewsTitle(newsRequest.getNewsTitle());
@@ -65,15 +63,12 @@ public class NewsServiceImpl implements NewsService {
         news.setTags(tags);
 
         news = newsRepository.save(news);
-        logger.info("Transaction ID: {}, News updated successfully", MDC.get("transactionId"));
         return mapToResponse(news);
     }
 
     @Transactional
     @Override
     public void deleteNews(Long id) {
-        logger.info("Transaction ID: {}, Deleting news with id {}", MDC.get("transactionId"), id);
-
         News news = getNewsByIdOrThrow(id);
 
         newsRepository.delete(news);
@@ -81,28 +76,27 @@ public class NewsServiceImpl implements NewsService {
 
     @Override
     public NewsResponse getNews(Long id) {
-        logger.info("Transaction ID: {}, Getting news with id {}", MDC.get("transactionId"), id);
-            News news = getNewsByIdOrThrow(id);
-            logger.info("Transaction ID: {}, News retrieved successfully", MDC.get("transactionId"));
-            return mapToResponse(news);
+        News news = getNewsByIdOrThrow(id);
+
+        return mapToResponse(news);
     }
 
     @Override
-    public Page<NewsResponse> getAllNews(int page, int size, String sortBy, Sort.Direction direction) {
-        logger.info("Transaction ID: {}, Getting all news", MDC.get("transactionId"));
-
-        return newsRepository.findAll(PageRequest.of(page, size, Sort.by(direction, sortBy)))
+    public Page<NewsResponse> getAllNews(Pageable pageable) {
+        return newsRepository.findAll(pageable)
                 .map(this::mapToResponse);
     }
 
     @Override
-    public Page<NewsResponse> getNewsByTagsId(List<Long> tagsId, int page, int size, String sortBy, Sort.Direction direction) {
-        logger.info("Transaction ID: {}, Getting all news by tags id", MDC.get("transactionId"));
-            Set<Tag> tags = new HashSet<>(tagRepository.findAllById(tagsId));
-            return newsRepository.findAllByTags(
-                    tags,
-                    PageRequest.of(page, size, Sort.by(direction, sortBy))
-            ).map(this::mapToResponse);
+    public Page<NewsResponse> getNewsByTagsId(List<Long> tagsId, Pageable pageable) {
+        Set<Tag> tags = new HashSet<>(tagRepository.findAllById(tagsId));
+        return newsRepository.findAllByTags(tags, pageable).map(this::mapToResponse);
+    }
+
+    @Override
+    public Page<NewsResponse> getNewsByTitle(String title, Pageable pageable) {
+        return newsRepository.findByNewsTitleContainingIgnoreCase(searchNormalizerUtil.normalize(title), pageable)
+                .map(this::mapToResponse);
     }
 
     private NewsResponse mapToResponse(News news) {

@@ -1,13 +1,9 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.FacultyRequest;
 import unv.upb.safi.domain.dto.response.FacultyResponse;
@@ -18,6 +14,7 @@ import unv.upb.safi.exception.entityNotFoundException.FacultyNotFoundException;
 import unv.upb.safi.repository.CollegeRepository;
 import unv.upb.safi.repository.FacultyRepository;
 import unv.upb.safi.service.FacultyService;
+import unv.upb.safi.util.SearchNormalizerUtil;
 
 @Service
 public class FacultyServiceImpl implements FacultyService {
@@ -26,71 +23,66 @@ public class FacultyServiceImpl implements FacultyService {
 
     private final CollegeRepository collegeRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(FacultyServiceImpl.class);
+    private final SearchNormalizerUtil searchNormalizerUtil;
 
     @Autowired
-    public FacultyServiceImpl(FacultyRepository facultyRepository, CollegeRepository collegeRepository) {
+    public FacultyServiceImpl(FacultyRepository facultyRepository,
+                              CollegeRepository collegeRepository,
+                              SearchNormalizerUtil searchNormalizerUtil) {
         this.facultyRepository = facultyRepository;
         this.collegeRepository = collegeRepository;
+        this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
     @Transactional
     @Override
     public FacultyResponse addFaculty(FacultyRequest facultyRequest) {
-        logger.info("Transaction ID: {}, Adding faculty {}",
-                MDC.get("transactionId"), facultyRequest.getFacultyName());
+        Faculty faculty = new Faculty();
+        faculty.setFacultyName(facultyRequest.getFacultyName());
+        faculty.setCollege(getCollegeByIdOrThrow(facultyRequest.getCollegeId()));
 
-            Faculty faculty = new Faculty();
-            faculty.setFacultyName(facultyRequest.getFacultyName());
-            faculty.setCollege(getCollegeByIdOrThrow(facultyRequest.getCollegeId()));
+        faculty = facultyRepository.save(faculty);
 
-            faculty = facultyRepository.save(faculty);
-
-            logger.info("Transaction ID: {}, Faculty added successfully", MDC.get("transactionId"));
-            return mapToResponse(faculty);
+        return mapToResponse(faculty);
     }
 
     @Override
     public FacultyResponse updateFaculty(Long facultyId, FacultyRequest facultyRequest){
-        logger.info("Transaction ID: {}, Updating faculty with id {}",
-                MDC.get("transactionId"), facultyId);
 
-            Faculty faculty = getFacultyByIdOrThrow(facultyId);
-            faculty.setFacultyName(facultyRequest.getFacultyName());
-            faculty.setCollege(getCollegeByIdOrThrow(facultyRequest.getCollegeId()));
-            faculty = facultyRepository.save(faculty);
+        Faculty faculty = getFacultyByIdOrThrow(facultyId);
+        faculty.setFacultyName(facultyRequest.getFacultyName());
+        faculty.setCollege(getCollegeByIdOrThrow(facultyRequest.getCollegeId()));
+        faculty = facultyRepository.save(faculty);
 
-            logger.info("Transaction ID: {}, Faculty updated successfully", MDC.get("transactionId"));
-            return mapToResponse(faculty);
+        return mapToResponse(faculty);
     }
 
     @Transactional
     @Override
     public void deleteFaculty(Long id) {
-        logger.info("Transaction ID: {}, Deleting faculty with id {}",
-                MDC.get("transactionId"), id);
         Faculty faculty = getFacultyByIdOrThrow(id);
 
         facultyRepository.delete(faculty);
-        logger.info("Transaction ID: {}, Faculty deleted successfully", MDC.get("transactionId"));
     }
 
     @Override
     public FacultyResponse getFaculty(Long id) {
-        logger.info("Transaction ID: {}, Getting faculty with id {}",
-                MDC.get("transactionId"), id);
-            Faculty faculty = getFacultyByIdOrThrow(id);
+        Faculty faculty = getFacultyByIdOrThrow(id);
 
-            return mapToResponse(faculty);
+        return mapToResponse(faculty);
     }
 
     @Override
-    public Page<FacultyResponse> getFacultyByCollegeId(Long collegeId, int page, int size, String sortBy, Sort.Direction direction) {
-        logger.info("Transaction ID: {}, Getting all faculties by college id {}",
-                MDC.get("transactionId"), collegeId);
+    public Page<FacultyResponse> getFacultiesByCollegeId(Long collegeId, Pageable pageable) {
         College college = getCollegeByIdOrThrow(collegeId);
 
-        return facultyRepository.findAllByCollege(college, PageRequest.of(page, size, Sort.by(direction, sortBy)))
+        return facultyRepository.findAllByCollege(college, pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Override
+    public Page<FacultyResponse> getFacultiesByName(String name, Pageable pageable) {
+        return facultyRepository.findByFacultyNameContainingIgnoreCase(searchNormalizerUtil.normalize(name), pageable)
                 .map(this::mapToResponse);
     }
 

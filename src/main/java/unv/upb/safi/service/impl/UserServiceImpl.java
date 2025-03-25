@@ -1,7 +1,5 @@
 package unv.upb.safi.service.impl;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -19,8 +17,6 @@ public class UserServiceImpl implements UserDetailsService, UserService {
     private final UserRepository userRepository;
 
     private final RoleRepository roleRepository;
-
-    private final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository) {

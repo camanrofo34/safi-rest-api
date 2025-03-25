@@ -3,6 +3,7 @@ package unv.upb.safi.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 import unv.upb.safi.domain.entity.Executive;
@@ -16,5 +17,8 @@ public interface ExecutiveRepository extends JpaRepository<Executive, Long> {
     Page<Executive> findAll(@NonNull Pageable pageable);
 
     @NonNull
-    Page<Executive> findExecutiveByUser_FirstName(@NonNull String userFirstName, @NonNull Pageable pageable);
+    @Query("SELECT e FROM Executive e " +
+            "WHERE UPPER(e.user.firstName) LIKE UPPER(CONCAT('%', :userSearch, '%'))" +
+            "OR UPPER(e.user.lastName) LIKE UPPER(CONCAT('%', :userSearch, '%')) ")
+    Page<Executive> findExecutiveNameContainingIgnoreCase(@NonNull String userSearch, @NonNull Pageable pageable);
 }

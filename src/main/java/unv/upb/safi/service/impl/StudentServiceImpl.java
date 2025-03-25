@@ -34,8 +34,6 @@ public class StudentServiceImpl implements StudentService {
 
     private final RoleRepository roleRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(StudentServiceImpl.class);
-
     @Autowired
     public StudentServiceImpl(StudentRepository studentRepository,
                               UserRepository userRepository,
@@ -50,67 +48,54 @@ public class StudentServiceImpl implements StudentService {
     @Transactional
     @Override
     public StudentResponse registerStudent(StudentRequest studentRequest) {
-        logger.info("Transaction Id: {}, Registering student: {}", MDC.get("transactionId"), studentRequest);
+        User user = mapToUser(studentRequest);
+        userRepository.save(user);
 
-            User user = mapToUser(studentRequest);
-            userRepository.save(user);
+        Set<Faculty> faculties = studentRequest.getFacultyId().stream()
+                .map(facultyId -> facultyRepository.findById(facultyId).orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-            Set<Faculty> faculties = studentRequest.getFacultyId().stream()
-                    .map(facultyId -> facultyRepository.findById(facultyId).orElse(null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+        Student student = new Student();
+        student.setUser(user);
+        student.setFaculty(faculties);
+        student = studentRepository.save(student);
 
-            Student student = new Student();
-            student.setUser(user);
-            student.setFaculty(faculties);
-            student = studentRepository.save(student);
-
-            logger.info("Transaction Id: {}, Student registered successfully: {}", MDC.get("transactionId"), student.getStudentId());
-            return mapToResponse(student);
+        return mapToResponse(student);
     }
 
     @Override
     public StudentResponse updateStudent(Long studentId, StudentRequest studentRequest) {
-        logger.info("Transaction Id: {}, Updating student: {}", MDC.get("transactionId"), studentRequest);
+        Student student = getStudentByIdOrThrow(studentId);
 
-            Student student = getStudentByIdOrThrow(studentId);
+        User user = mapToUser(studentRequest);
+        userRepository.save(user);
 
-            User user = mapToUser(studentRequest);
-            userRepository.save(user);
+        Set<Faculty> faculties = studentRequest.getFacultyId().stream()
+                .map(facultyId -> facultyRepository.findById(facultyId).orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-            Set<Faculty> faculties = studentRequest.getFacultyId().stream()
-                    .map(facultyId -> facultyRepository.findById(facultyId).orElse(null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+        student.setUser(user);
+        student.setFaculty(faculties);
+        student = studentRepository.save(student);
 
-            student.setUser(user);
-            student.setFaculty(faculties);
-            student = studentRepository.save(student);
-
-
-            return mapToResponse(student);
+        return mapToResponse(student);
     }
 
     @Transactional
     @Override
     public void deleteStudent(Long studentId) {
-        logger.info("Transaction Id: {}, Deleting student: {}", MDC.get("transactionId"), studentId);
-
         Student student = getStudentByIdOrThrow(studentId);
 
         studentRepository.delete(student);
-
-        logger.info("Transaction Id: {}, Student deleted successfully: {}", MDC.get("transactionId"), studentId);
-
     }
 
     @Override
     public StudentResponse getStudent(Long studentId) {
-        logger.info("Transaction Id: {}, Fetching student: {}", MDC.get("transactionId"), studentId);
+        Student student = getStudentByIdOrThrow(studentId);
 
-            Student student = getStudentByIdOrThrow(studentId);
-
-            return mapToResponse(student);
+        return mapToResponse(student);
     }
 
     private User mapToUser(StudentRequest studentRequest) {

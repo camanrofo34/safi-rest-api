@@ -2,6 +2,7 @@ package unv.upb.safi.service;
 
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import unv.upb.safi.domain.dto.request.ExecutiveRequest;
 import unv.upb.safi.domain.dto.response.ExecutiveResponse;
@@ -17,5 +18,7 @@ public interface ExecutiveService {
 
     ExecutiveResponse getExecutive(Long id);
 
-    Page<ExecutiveResponse> getExecutives(int page, int size, String sortBy, Sort.Direction direction);
+    Page<ExecutiveResponse> getExecutives(Pageable pageable);
+
+    Page<ExecutiveResponse> getExecutivesByExecutiveName(String name, Pageable pageable);
 }

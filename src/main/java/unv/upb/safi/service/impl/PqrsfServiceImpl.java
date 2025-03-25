@@ -1,12 +1,11 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import unv.upb.safi.domain.dto.request.PqrsfRequest;
@@ -27,8 +26,6 @@ public class PqrsfServiceImpl implements PqrsfService {
 
     private final StudentRepository studentRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
     @Autowired
     public PqrsfServiceImpl(PqrsfRepository pqrsfRepository, StudentRepository studentRepository) {
         this.pqrsfRepository = pqrsfRepository;
@@ -38,9 +35,6 @@ public class PqrsfServiceImpl implements PqrsfService {
     @Transactional
     @Override
     public PqrsfResponse createPqrsf(Long studentId, PqrsfRequest pqrsfRequest) {
-        logger.info("Transaction ID: {}, Student {} is creating a PQRSF",
-                MDC.get("transactionId"), studentId);
-
         Student student = getStudentByIdOrThrow(studentId);
 
         Pqrsf pqrsf = new Pqrsf();
@@ -50,44 +44,29 @@ public class PqrsfServiceImpl implements PqrsfService {
         pqrsf.setSubmissionDate(pqrsfRequest.getSubmissionDate());
         pqrsf = pqrsfRepository.save(pqrsf);
 
-        logger.info("Transaction ID: {}, PQRSF created for student {}",
-                MDC.get("transactionId"), studentId);
         return mapToResponse(pqrsf);
     }
 
     @Transactional
     @Override
     public void deletePqrsf(Long requestId) {
-        logger.info("Transaction ID: {}, Deleting PQRSF {}",
-                MDC.get("transactionId"), requestId);
-
         Pqrsf pqrsf = getPqrsfByIdOrThrow(requestId);
 
 
         pqrsfRepository.delete(pqrsf);
-        logger.info("Transaction ID: {}, PQRSF {} deleted",
-                    MDC.get("transactionId"), requestId);
     }
 
     @Override
     public PqrsfResponse getPqrsf(Long requestId) {
-        logger.info("Transaction ID: {}, Getting PQRSF {}",
-                MDC.get("transactionId"), requestId);
+
         Pqrsf pqrsf = getPqrsfByIdOrThrow(requestId);
 
-        logger.info("Transaction ID: {}, PQRSF {} retrieved",
-                MDC.get("transactionId"), requestId);
         return mapToResponse(pqrsf);
     }
 
     @Override
-    public Page<PqrsfResponse> getAllPqrsf(int page, int size, String sortBy, Sort.Direction direction) {
-        logger.info("Transaction ID: {}, Getting all PQRSFs",
-                MDC.get("transactionId"));
-
-        return pqrsfRepository.findAll(
-                PageRequest.of(page, size, Sort.by(direction, sortBy))
-        ).map(this::mapToResponse);
+    public Page<PqrsfResponse> getAllPqrsf(Pageable pageable) {
+        return pqrsfRepository.findAll(pageable).map(this::mapToResponse);
     }
 
     private PqrsfResponse mapToResponse(Pqrsf pqrsf) {

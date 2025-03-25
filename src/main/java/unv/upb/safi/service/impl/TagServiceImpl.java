@@ -22,7 +22,6 @@ public class TagServiceImpl implements TagService {
 
     private final TagRepository tagRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(TagServiceImpl.class);
 
     @Autowired
     public TagServiceImpl(TagRepository tagRepository) {

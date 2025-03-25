@@ -1,9 +1,6 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -32,7 +29,6 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final StudentRepository studentRepository;
     private final ExecutiveRepository executiveRepository;
-    private final Logger logger = LoggerFactory.getLogger(AppointmentServiceImpl.class);
 
     @Autowired
     public AppointmentServiceImpl(
@@ -47,8 +43,6 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Transactional
     @Override
     public AppointmentResponse scheduleAppointment(Long studentId, AppointmentRequest appointmentRequest) throws AppointmentConflictException {
-        logger.info("Transaction ID: {}, Student {} is scheduling an appointment with executive {}",
-                MDC.get("transactionId"), studentId, appointmentRequest.getExecutiveId());
 
         Student student = getStudentById(studentId);
 
@@ -68,7 +62,6 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setAppointmentStatus(appointmentRequest.getAppointmentStatus());
 
         appointment = appointmentRepository.save(appointment);
-        logger.info("Transaction ID: {}, Appointment scheduled successfully", MDC.get("transactionId"));
 
         return mapToResponse(appointment);
     }
@@ -76,23 +69,15 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Transactional
     @Override
     public void cancelAppointment(Long appointmentId) {
-        logger.info("Transaction ID: {}, Cancelling appointment {}",
-                MDC.get("transactionId"), appointmentId);
-
         Appointment appointment = getAppointmentByIdOrThrow(appointmentId);
 
         appointmentRepository.delete(appointment);
-
-        logger.info("Transaction ID: {}, Appointment {} cancelled successfully", MDC.get("transactionId"), appointmentId);
     }
 
     @Override
     public Set<AppointmentResponse> getAppointmentsByStudent(Long studentId,
                                                              int year,
                                                              int month) {
-        logger.info("Transaction ID: {}, Fetching appointments for student {}",
-                MDC.get("transactionId"), studentId);
-
         Student student = getStudentById(studentId);
 
         Sort sort = Sort.by(Sort.Order.asc("appointmentTime"));
@@ -113,9 +98,6 @@ public class AppointmentServiceImpl implements AppointmentService {
     public Set<AppointmentResponse> getAppointmentsByExecutive(Long executiveId,
                                                                int year,
                                                                int month) {
-        logger.info("Transaction ID: {}, Fetching appointments for executive {}",
-                MDC.get("transactionId"), executiveId);
-
         Executive executive = getExecutiveById(executiveId);
 
         Sort sort = Sort.by(Sort.Order.asc("appointmentTime"));
@@ -134,9 +116,6 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public AppointmentResponse getAppointmentById(Long appointmentId) {
-        logger.info("Transaction ID: {}, Fetching appointment with id {}",
-                MDC.get("transactionId"), appointmentId);
-
         Appointment appointment = getAppointmentByIdOrThrow(appointmentId);
 
         return mapToResponse(appointment);
