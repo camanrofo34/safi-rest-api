@@ -4,7 +4,11 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.NewsController;
 import unv.upb.safi.domain.dto.request.NewsRequest;
 import unv.upb.safi.domain.dto.response.NewsResponse;
 import unv.upb.safi.domain.entity.News;
@@ -17,12 +21,17 @@ import unv.upb.safi.util.SearchNormalizerUtil;
 
 import java.util.*;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 @Service
 public class NewsServiceImpl implements NewsService {
 
     private final NewsRepository newsRepository;
     private final TagRepository tagRepository;
     private final SearchNormalizerUtil searchNormalizerUtil;
+
+    private PagedResourcesAssembler<NewsResponse> pagedResourcesAssembler;
 
     @Autowired
     public NewsServiceImpl(NewsRepository newsRepository,
@@ -33,9 +42,14 @@ public class NewsServiceImpl implements NewsService {
         this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
+    @Autowired
+    public void setPagedResourcesAssembler(PagedResourcesAssembler<NewsResponse> pagedResourcesAssembler) {
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+    }
+
     @Transactional
     @Override
-    public NewsResponse createNews(NewsRequest newsRequest) {
+    public EntityModel<NewsResponse> createNews(NewsRequest newsRequest) {
         News news = new News();
         news.setNewsTitle(newsRequest.getNewsTitle());
         news.setNewsContent(newsRequest.getNewsContent());
@@ -51,7 +65,7 @@ public class NewsServiceImpl implements NewsService {
     }
 
     @Override
-    public NewsResponse updateNews(Long newsId, NewsRequest newsRequest) {
+    public EntityModel<NewsResponse> updateNews(Long newsId, NewsRequest newsRequest) {
         News news = getNewsByIdOrThrow(newsId);
 
         news.setNewsTitle(newsRequest.getNewsTitle());
@@ -75,32 +89,69 @@ public class NewsServiceImpl implements NewsService {
     }
 
     @Override
-    public NewsResponse getNews(Long id) {
+    public EntityModel<NewsResponse> getNews(Long id) {
         News news = getNewsByIdOrThrow(id);
 
         return mapToResponse(news);
     }
 
     @Override
-    public Page<NewsResponse> getAllNews(Pageable pageable) {
-        return newsRepository.findAll(pageable)
-                .map(this::mapToResponse);
+    public PagedModel<EntityModel<NewsResponse>> getAllNews(Pageable pageable) {
+        Page<NewsResponse> responsePage = newsRepository.findAll(pageable)
+                .map(
+                        newsResponse -> new NewsResponse(
+                                newsResponse.getNewsId(),
+                                newsResponse.getNewsTitle(),
+                                newsResponse.getNewsContent(),
+                                newsResponse.getUrlNewsImage(),
+                                newsResponse.getNewsDate(),
+                                newsResponse.getTags().stream().map(Tag::getTagName).toList()
+                        )
+                );
+        return pagedResourcesAssembler.toModel(responsePage, this::mapToEntityModelToResourceModel);
     }
 
     @Override
-    public Page<NewsResponse> getNewsByTagsId(List<Long> tagsId, Pageable pageable) {
+    public PagedModel<EntityModel<NewsResponse>> getNewsByTagsId(List<Long> tagsId, Pageable pageable) {
         Set<Tag> tags = new HashSet<>(tagRepository.findAllById(tagsId));
-        return newsRepository.findAllByTags(tags, pageable).map(this::mapToResponse);
+
+        Page<NewsResponse> responsePage = newsRepository.findAllByTags(tags, pageable)
+                .map(
+                        newsResponse -> new NewsResponse(
+                                newsResponse.getNewsId(),
+                                newsResponse.getNewsTitle(),
+                                newsResponse.getNewsContent(),
+                                newsResponse.getUrlNewsImage(),
+                                newsResponse.getNewsDate(),
+                                newsResponse.getTags().stream().map(Tag::getTagName).toList()
+                        )
+                );
+
+        return pagedResourcesAssembler.toModel(responsePage, this::mapToEntityModelToResourceModel);
     }
 
     @Override
-    public Page<NewsResponse> getNewsByTitle(String title, Pageable pageable) {
-        return newsRepository.findByNewsTitleContainingIgnoreCase(searchNormalizerUtil.normalize(title), pageable)
-                .map(this::mapToResponse);
+    public PagedModel<EntityModel<NewsResponse>> getNewsByTitle(String title, Pageable pageable) {
+
+        Page<NewsResponse> responsePage = newsRepository.findAllByNewsTitleContainingIgnoreCase(
+                searchNormalizerUtil.normalize(title), pageable)
+                .map(
+                        newsResponse -> new NewsResponse(
+                                newsResponse.getNewsId(),
+                                newsResponse.getNewsTitle(),
+                                newsResponse.getNewsContent(),
+                                newsResponse.getUrlNewsImage(),
+                                newsResponse.getNewsDate(),
+                                newsResponse.getTags().stream().map(Tag::getTagName).toList()
+                        )
+                );
+
+        return pagedResourcesAssembler.toModel(responsePage, this::mapToEntityModelToResourceModel);
+
     }
 
-    private NewsResponse mapToResponse(News news) {
-        return new NewsResponse(
+    private EntityModel<NewsResponse> mapToResponse(News news) {
+        NewsResponse newsResponse = new NewsResponse(
                 news.getNewsId(),
                 news.getNewsTitle(),
                 news.getNewsContent(),
@@ -108,7 +159,34 @@ public class NewsServiceImpl implements NewsService {
                 news.getNewsDate(),
                 news.getTags().stream().map(Tag::getTagName).toList()
         );
+
+        return mapToEntityModel(newsResponse);
     }
+
+    private EntityModel<NewsResponse> mapToEntityModel(NewsResponse newsResponse) {
+        EntityModel<NewsResponse> response = EntityModel.of(newsResponse);
+
+        response.add(
+                linkTo(
+                        methodOn(NewsController.class).getNews(newsResponse.getNewsId()))
+                        .withSelfRel(),
+                linkTo(
+                        methodOn(NewsController.class).deleteNews(newsResponse.getNewsId()))
+                        .withRel("delete-news")
+        );
+        return response;
+    }
+    private EntityModel<NewsResponse> mapToEntityModelToResourceModel(NewsResponse newsResponse) {
+        EntityModel<NewsResponse> response = EntityModel.of(newsResponse);
+
+        response.add(
+                linkTo(
+                        methodOn(NewsController.class).getNews(newsResponse.getNewsId()))
+                        .withSelfRel()
+        );
+        return response;
+    }
+
 
     private News getNewsByIdOrThrow(Long newsId) {
         return newsRepository.findById(newsId)

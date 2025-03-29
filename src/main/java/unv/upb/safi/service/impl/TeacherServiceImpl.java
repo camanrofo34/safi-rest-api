@@ -4,7 +4,11 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.TeacherController;
 import unv.upb.safi.domain.dto.request.TeacherRequest;
 import unv.upb.safi.domain.dto.response.TeacherResponse;
 import unv.upb.safi.domain.entity.College;
@@ -20,6 +24,9 @@ import unv.upb.safi.util.SearchNormalizerUtil;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 @Service
 public class TeacherServiceImpl implements TeacherService {
 
@@ -32,6 +39,8 @@ public class TeacherServiceImpl implements TeacherService {
     private final RoleRepository roleRepository;
 
     private final SearchNormalizerUtil searchNormalizerUtil;
+
+    private PagedResourcesAssembler<TeacherResponse> pagedResourcesAssembler;
 
     @Autowired
     public TeacherServiceImpl(TeacherRepository teacherRepository,
@@ -46,9 +55,14 @@ public class TeacherServiceImpl implements TeacherService {
         this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
+    @Autowired
+    public void setPagedResourcesAssembler(PagedResourcesAssembler<TeacherResponse> pagedResourcesAssembler) {
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+    }
+
     @Transactional
     @Override
-    public TeacherResponse   registerTeacher(TeacherRequest teacherRequest) {
+    public EntityModel<TeacherResponse> registerTeacher(TeacherRequest teacherRequest) {
         User user = mapToUser(teacherRequest);
         user = userRepository.save(user);
 
@@ -61,14 +75,14 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
-    public TeacherResponse getTeacher(Long teacherId) {
+    public EntityModel<TeacherResponse> getTeacher(Long teacherId) {
         Teacher teacher = getTeacherByIdOrThrow(teacherId);
 
         return mapToResponse(teacher);
     }
 
     @Override
-    public TeacherResponse updateTeacher(Long teacherId, TeacherRequest teacherRequest) {
+    public EntityModel<TeacherResponse> updateTeacher(Long teacherId, TeacherRequest teacherRequest) {
         Teacher teacher = getTeacherByIdOrThrow(teacherId);
 
         User user = mapToUser(teacherRequest);
@@ -90,16 +104,40 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
-    public Page<TeacherResponse> getAllTeachers(Pageable pageable){
-        return teacherRepository.findAll(pageable).map(this::mapToResponse);
+    public PagedModel<EntityModel<TeacherResponse>> getAllTeachers(Pageable pageable){
+        Page<TeacherResponse> teacherResponses = teacherRepository.findAll(pageable).
+                map(
+                        teacher -> new TeacherResponse(
+                                teacher.getTeacherId(),
+                                teacher.getUser().getFirstName(),
+                                teacher.getUser().getLastName(),
+                                teacher.getUser().getEmail(),
+                                teacher.getUser().getUsername(),
+                                teacher.getUser().getRoles().stream().map(Role::getName).toList(),
+                                teacher.getCollege().getName()
+                        )
+                );
+
+        return pagedResourcesAssembler.toModel(teacherResponses, this::mapToModelToResourceModel);
     }
 
     @Override
-    public Page<TeacherResponse> getTeachersByName(String name, Pageable pageable) {
-        return teacherRepository.findByTeacherNameContainingIgnoreCase(
-                searchNormalizerUtil.normalize(name),
-                pageable
-        ).map(this::mapToResponse);
+    public PagedModel<EntityModel<TeacherResponse>> getTeachersByName(String name, Pageable pageable) {
+        Page<TeacherResponse> teacherResponses = teacherRepository.findAllByTeacherNameContainingIgnoreCase(
+                searchNormalizerUtil.normalize(name), pageable)
+                .map(teacher ->
+                        new TeacherResponse(
+                                teacher.getTeacherId(),
+                                teacher.getUser().getFirstName(),
+                                teacher.getUser().getLastName(),
+                                teacher.getUser().getEmail(),
+                                teacher.getUser().getUsername(),
+                                teacher.getUser().getRoles().stream().map(Role::getName).toList(),
+                                teacher.getCollege().getName()
+                        )
+                );
+
+        return pagedResourcesAssembler.toModel(teacherResponses, this::mapToModelToResourceModel);
     }
 
     private User mapToUser(TeacherRequest teacherRequest) {
@@ -120,8 +158,8 @@ public class TeacherServiceImpl implements TeacherService {
         return user;
     }
 
-    private TeacherResponse mapToResponse(Teacher teacher) {
-        return new TeacherResponse(
+    private EntityModel<TeacherResponse> mapToResponse(Teacher teacher) {
+        TeacherResponse teacherResponse = new TeacherResponse(
             teacher.getTeacherId(),
             teacher.getUser().getFirstName(),
             teacher.getUser().getLastName(),
@@ -129,6 +167,21 @@ public class TeacherServiceImpl implements TeacherService {
             teacher.getUser().getUsername(),
             teacher.getUser().getRoles().stream().map(Role::getName).toList(),
             teacher.getCollege().getName()
+        );
+
+        return mapToModel(teacherResponse);
+    }
+
+    private EntityModel<TeacherResponse> mapToModel(TeacherResponse teacherResponse) {
+        return EntityModel.of(teacherResponse,
+                linkTo(methodOn(TeacherController.class).getTeacher(teacherResponse.getTeacherId())).withSelfRel(),
+                linkTo(methodOn(TeacherController.class).deleteTeacher(teacherResponse.getTeacherId())).withRel("delete-teacher")
+                );
+    }
+
+    private EntityModel<TeacherResponse> mapToModelToResourceModel(TeacherResponse teacherResponse) {
+        return EntityModel.of(teacherResponse,
+                linkTo(methodOn(TeacherController.class).getTeacher(teacherResponse.getTeacherId())).withSelfRel()
         );
     }
 

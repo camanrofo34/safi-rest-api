@@ -16,6 +16,6 @@ public interface DependencyRepository extends JpaRepository<Dependency, Long> {
     Page<Dependency> findByComponent_ComponentId(@NonNull Long componentComponentId, @NonNull Pageable pageable);
 
     @NonNull
-    Page<Dependency> findByDependencyNameContainingIgnoreCase(@NonNull String dependencyName, @NonNull Pageable pageable);
+    Page<Dependency> findAllByDependencyNameContainingIgnoreCase(@NonNull String dependencyName, @NonNull Pageable pageable);
 
 }

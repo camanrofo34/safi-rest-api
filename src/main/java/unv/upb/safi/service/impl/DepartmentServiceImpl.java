@@ -5,7 +5,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.DepartmentController;
 import unv.upb.safi.domain.dto.request.DepartmentRequest;
 import unv.upb.safi.domain.dto.response.DepartmentResponse;
 import unv.upb.safi.domain.entity.Department;
@@ -14,6 +18,9 @@ import unv.upb.safi.repository.DepartmentRepository;
 import unv.upb.safi.service.DepartmentService;
 import unv.upb.safi.util.SearchNormalizerUtil;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 @Service
 public class DepartmentServiceImpl implements DepartmentService {
 
@@ -21,15 +28,22 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     private final SearchNormalizerUtil searchNormalizerUtil;
 
+    private PagedResourcesAssembler<DepartmentResponse> pagedResourcesAssembler;
+
     @Autowired
     public DepartmentServiceImpl(DepartmentRepository departmentRepository, SearchNormalizerUtil searchNormalizerUtil) {
         this.departmentRepository = departmentRepository;
         this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
+    @Autowired
+    public void setPagedResourcesAssembler(PagedResourcesAssembler<DepartmentResponse> pagedResourcesAssembler) {
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+    }
+
     @Transactional
     @Override
-    public DepartmentResponse createDepartment(DepartmentRequest departmentRequest) {
+    public EntityModel<DepartmentResponse> createDepartment(DepartmentRequest departmentRequest) {
 
         Department department = new Department();
         department.setDepartmentName(departmentRequest.getDepartmentName());
@@ -52,7 +66,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
-    public DepartmentResponse updateDepartment(Long departmentId, DepartmentRequest departmentRequest) {
+    public EntityModel<DepartmentResponse> updateDepartment(Long departmentId, DepartmentRequest departmentRequest) {
 
         Department department = getDepartmentByIdOrThrow(departmentId);
 
@@ -63,7 +77,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
-    public DepartmentResponse getDepartmentById(Long departmentId) {
+    public EntityModel<DepartmentResponse> getDepartmentById(Long departmentId) {
 
         Department department = getDepartmentByIdOrThrow(departmentId);
 
@@ -71,23 +85,53 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
-    public Page<DepartmentResponse> getDepartments(Pageable pageable) {
+    public PagedModel<EntityModel<DepartmentResponse>> getDepartments(Pageable pageable) {
 
-        return departmentRepository.findAll(pageable)
-                .map(this::mapToResponse);
+        Page<DepartmentResponse> departmentResponses = departmentRepository.findAll(pageable)
+                .map(department ->
+                        new DepartmentResponse(
+                                department.getDepartmentId(),
+                                department.getDepartmentName()
+                        )
+                );
+
+        return pagedResourcesAssembler.toModel(departmentResponses, this::mapToEntityModelToResourceModel);
     }
 
     @Override
-    public Page<DepartmentResponse> getDepartmentsByName(String name, Pageable pageable) {
+    public PagedModel<EntityModel<DepartmentResponse>> getDepartmentsByName(String name, Pageable pageable) {
 
-        return departmentRepository.findByDepartmentNameContainingIgnoreCase(name, pageable)
-                .map(this::mapToResponse);
+        Page<DepartmentResponse> departmentResponses = departmentRepository.findAllByDepartmentNameContainingIgnoreCase(
+                searchNormalizerUtil.normalize(name), pageable)
+                .map(department ->
+                        new DepartmentResponse(
+                                department.getDepartmentId(),
+                                department.getDepartmentName()
+                        )
+                );
+
+        return pagedResourcesAssembler.toModel(departmentResponses, this::mapToEntityModelToResourceModel);
     }
 
-    private DepartmentResponse mapToResponse(Department department) {
-        return new DepartmentResponse(
+    private EntityModel<DepartmentResponse> mapToResponse(Department department) {
+        DepartmentResponse departmentResponse = new DepartmentResponse(
                 department.getDepartmentId(),
                 department.getDepartmentName()
+        );
+
+        return mapToEntityModel(departmentResponse);
+    }
+
+    private EntityModel<DepartmentResponse> mapToEntityModel(DepartmentResponse departmentResponse) {
+        return EntityModel.of(departmentResponse,
+                linkTo(methodOn(DepartmentController.class).getById(departmentResponse.getDepartmentId())).withSelfRel(),
+                linkTo(methodOn(DepartmentController.class).delete(departmentResponse.getDepartmentId())).withRel("delete-department")
+        );
+    }
+
+    private EntityModel<DepartmentResponse> mapToEntityModelToResourceModel(DepartmentResponse departmentResponse) {
+        return EntityModel.of(departmentResponse,
+                linkTo(methodOn(DepartmentController.class).getById(departmentResponse.getDepartmentId())).withSelfRel()
         );
     }
 

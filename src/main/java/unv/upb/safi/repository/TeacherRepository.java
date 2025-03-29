@@ -18,5 +18,5 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     @Query("SELECT t FROM Teacher t " +
             "WHERE UPPER(t.user.firstName) LIKE UPPER(CONCAT('%', :userSearch, '%'))" +
             "OR UPPER(t.user.lastName) LIKE UPPER(CONCAT('%', :userSearch, '%')) ")
-    Page<Teacher> findByTeacherNameContainingIgnoreCase(@NonNull String name, @NonNull Pageable pageable);
+    Page<Teacher> findAllByTeacherNameContainingIgnoreCase(@NonNull String name, @NonNull Pageable pageable);
 }

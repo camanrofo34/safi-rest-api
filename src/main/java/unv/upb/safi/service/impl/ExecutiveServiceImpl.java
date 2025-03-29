@@ -4,7 +4,11 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.ExecutiveController;
 import unv.upb.safi.domain.dto.request.ExecutiveRequest;
 import unv.upb.safi.domain.dto.response.ExecutiveResponse;
 import unv.upb.safi.domain.entity.Department;
@@ -22,6 +26,9 @@ import unv.upb.safi.util.SearchNormalizerUtil;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 @Service
 public class ExecutiveServiceImpl implements ExecutiveService {
 
@@ -34,6 +41,8 @@ public class ExecutiveServiceImpl implements ExecutiveService {
     private final DepartmentRepository departmentRepository;
 
     private final SearchNormalizerUtil searchNormalizerUtil;
+
+    private PagedResourcesAssembler<ExecutiveResponse> pagedResourcesAssembler;
 
     @Autowired
     public ExecutiveServiceImpl(ExecutiveRepository executiveRepository,
@@ -48,35 +57,40 @@ public class ExecutiveServiceImpl implements ExecutiveService {
         this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
+    @Autowired
+    public void setPagedResourcesAssembler(PagedResourcesAssembler<ExecutiveResponse> pagedResourcesAssembler) {
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+    }
+
     @Transactional
     @Override
-    public ExecutiveResponse createExecutive(ExecutiveRequest executiveRequest) {
-            User user = mapToUser(executiveRequest);
+    public EntityModel<ExecutiveResponse> createExecutive(ExecutiveRequest executiveRequest) {
+        User user = mapToUser(executiveRequest);
 
-            user = userRepository.save(user);
+        user = userRepository.save(user);
 
-            Department department = getDepartmentByIdOrThrow(executiveRequest.getDepartmentId());
-            Executive executive = new Executive();
-            executive.setUser(user);
-            executive.setDepartment(department);
-            executive = executiveRepository.save(executive);
+        Department department = getDepartmentByIdOrThrow(executiveRequest.getDepartmentId());
+        Executive executive = new Executive();
+        executive.setUser(user);
+        executive.setDepartment(department);
+        executive = executiveRepository.save(executive);
 
-            return mapToResponse(executive);
+        return mapToResponse(executive);
     }
 
     @Override
-    public ExecutiveResponse updateExecutive(Long executiveId, ExecutiveRequest executiveRequest) {
+    public EntityModel<ExecutiveResponse> updateExecutive(Long executiveId, ExecutiveRequest executiveRequest) {
 
-            Executive executive = getExecutiveByIdOrThrow(executiveId);
-            User user = mapToUser(executiveRequest);
-            userRepository.save(user);
+        Executive executive = getExecutiveByIdOrThrow(executiveId);
+        User user = mapToUser(executiveRequest);
+        userRepository.save(user);
 
-            Department department = getDepartmentByIdOrThrow(executiveRequest.getDepartmentId());
+        Department department = getDepartmentByIdOrThrow(executiveRequest.getDepartmentId());
 
-            executive.setDepartment(department);
-            executive = executiveRepository.save(executive);
+        executive.setDepartment(department);
+        executive = executiveRepository.save(executive);
 
-            return mapToResponse(executive);
+        return mapToResponse(executive);
     }
 
     @Transactional
@@ -88,24 +102,47 @@ public class ExecutiveServiceImpl implements ExecutiveService {
     }
 
     @Override
-    public ExecutiveResponse getExecutive(Long id) {
+    public EntityModel<ExecutiveResponse> getExecutive(Long id) {
 
-            Executive executive = getExecutiveByIdOrThrow(id);
+        Executive executive = getExecutiveByIdOrThrow(id);
 
-            return mapToResponse(executive);
+        return mapToResponse(executive);
     }
 
     @Override
-    public Page<ExecutiveResponse> getExecutives(Pageable pageable) {
-        return executiveRepository.findAll(pageable)
-        .map(this::mapToResponse);
+    public PagedModel<EntityModel<ExecutiveResponse>> getExecutives(Pageable pageable) {
+        Page<ExecutiveResponse> executiveResponses = executiveRepository.findAll(pageable)
+                .map(executive ->
+                        new ExecutiveResponse(
+                                executive.getExecutiveId(),
+                                executive.getUser().getFirstName(),
+                                executive.getUser().getLastName(),
+                                executive.getUser().getEmail(),
+                                executive.getUser().getUsername(),
+                                executive.getUser().getRoles().stream().map(Role::getName).toList(),
+                                executive.getDepartment().getDepartmentName()
+                        ));
+
+        return pagedResourcesAssembler.toModel(executiveResponses, this::mapToEntityModelToResourceModel);
     }
 
     @Override
-    public Page<ExecutiveResponse> getExecutivesByExecutiveName(String name, Pageable pageable) {
-        return executiveRepository.findExecutiveNameContainingIgnoreCase(
+    public PagedModel<EntityModel<ExecutiveResponse>> getExecutivesByExecutiveName(String name, Pageable pageable) {
+
+        Page<ExecutiveResponse> executiveResponses = executiveRepository.findAllByExecutiveNameContainingIgnoreCase(
                 searchNormalizerUtil.normalize(name), pageable)
-                .map(this::mapToResponse);
+                .map(executive ->
+                        new ExecutiveResponse(
+                                executive.getExecutiveId(),
+                                executive.getUser().getFirstName(),
+                                executive.getUser().getLastName(),
+                                executive.getUser().getEmail(),
+                                executive.getUser().getUsername(),
+                                executive.getUser().getRoles().stream().map(Role::getName).toList(),
+                                executive.getDepartment().getDepartmentName()
+                        ));
+
+        return pagedResourcesAssembler.toModel(executiveResponses, this::mapToEntityModelToResourceModel);
     }
 
     private User mapToUser(ExecutiveRequest executiveRequest) {
@@ -126,10 +163,11 @@ public class ExecutiveServiceImpl implements ExecutiveService {
         return user;
     }
 
-    private ExecutiveResponse mapToResponse(Executive executive) {
+
+    private EntityModel<ExecutiveResponse> mapToResponse(Executive executive) {
         User user = executive.getUser();
         Department department = executive.getDepartment();
-        return new ExecutiveResponse(
+        ExecutiveResponse executiveResponse = new ExecutiveResponse(
             executive.getExecutiveId(),
             user.getFirstName(),
             user.getLastName(),
@@ -137,6 +175,23 @@ public class ExecutiveServiceImpl implements ExecutiveService {
             user.getUsername(),
             user.getRoles().stream().map(Role::getName).toList(),
             department.getDepartmentName()
+        );
+
+        return mapToEntityModel(executiveResponse);
+    }
+
+    private EntityModel<ExecutiveResponse> mapToEntityModel(ExecutiveResponse executiveResponse) {
+        return EntityModel.of(
+                executiveResponse,
+                linkTo(methodOn(ExecutiveController.class).getExecutive(executiveResponse.getExecutiveId())).withSelfRel(),
+                linkTo(methodOn(ExecutiveController.class).deleteExecutive(executiveResponse.getExecutiveId())).withRel("delete-executive")
+        );
+    }
+
+    private EntityModel<ExecutiveResponse> mapToEntityModelToResourceModel(ExecutiveResponse executiveResponse) {
+        return EntityModel.of(
+                executiveResponse,
+                linkTo(methodOn(ExecutiveController.class).getExecutive(executiveResponse.getExecutiveId())).withSelfRel()
         );
     }
 

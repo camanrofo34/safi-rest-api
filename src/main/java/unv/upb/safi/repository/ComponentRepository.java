@@ -16,5 +16,5 @@ public interface ComponentRepository extends JpaRepository<Component, Long> {
     Page<Component> findAll(@NonNull Pageable pageable);
 
     @NonNull
-    Page<Component> findByComponentNameContainingIgnoreCase(@NonNull String name, @NonNull Pageable pageable);
+    Page<Component> findAllByComponentNameContainingIgnoreCase(@NonNull String name, @NonNull Pageable pageable);
 }

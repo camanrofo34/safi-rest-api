@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -29,15 +30,15 @@ public class AppointmentController {
     }
 
     @PostMapping("/student/{studentId:\\d+}/appointment")
-    public ResponseEntity<AppointmentResponse> scheduleAppointment(@PathVariable Long studentId,
-                                                   @RequestBody @Valid AppointmentRequest appointmentRequest){
+    public ResponseEntity<EntityModel<AppointmentResponse>> scheduleAppointment(@PathVariable Long studentId,
+                                                                               @RequestBody @Valid AppointmentRequest appointmentRequest){
         UUID transactionId = UUID.randomUUID();
         MDC.put("transactionId", transactionId.toString());
 
         log.info("Transaction ID: {}, Student {} is scheduling appointment with executive {}",
                 transactionId ,studentId, appointmentRequest.getExecutiveId());
         try {
-            AppointmentResponse appointmentResponse = appointmentService.scheduleAppointment(studentId, appointmentRequest);
+            EntityModel<AppointmentResponse> appointmentResponse = appointmentService.scheduleAppointment(studentId, appointmentRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(appointmentResponse);
         } finally {
             MDC.clear();
@@ -60,7 +61,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/student/{studentId:\\d+}/appointment")
-    public ResponseEntity<Set<AppointmentResponse>> getAppointmentsForStudent(@PathVariable Long studentId,
+    public ResponseEntity<Set<EntityModel<AppointmentResponse>>> getAppointmentsForStudent(@PathVariable Long studentId,
                                                                    @RequestParam Integer year,
                                                                    @RequestParam Integer month) {
         UUID transactionId = UUID.randomUUID();
@@ -69,7 +70,7 @@ public class AppointmentController {
         log.info("Transaction ID: {}, Student {} is fetching appointments",
                 transactionId, studentId);
         try{
-            Set<AppointmentResponse> appointmentResponse = appointmentService.getAppointmentsByStudent(studentId, year, month);
+            Set<EntityModel<AppointmentResponse>> appointmentResponse = appointmentService.getAppointmentsByStudent(studentId, year, month);
             return ResponseEntity.status(HttpStatus.OK).body(appointmentResponse);
         } finally {
             MDC.clear();
@@ -77,7 +78,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/executive/{executiveId:\\d+}/appointment")
-    public ResponseEntity<Set<AppointmentResponse>> getAppointmentsForExecutive(@PathVariable Long executiveId,
+    public ResponseEntity<Set<EntityModel<AppointmentResponse>>> getAppointmentsForExecutive(@PathVariable Long executiveId,
                                                                    @RequestParam Integer year,
                                                                    @RequestParam Integer month) {
         UUID transactionId = UUID.randomUUID();
@@ -87,7 +88,7 @@ public class AppointmentController {
                 transactionId, executiveId);
 
         try {
-            Set<AppointmentResponse> appointmentResponse = appointmentService.getAppointmentsByExecutive(executiveId, year, month);
+            Set<EntityModel<AppointmentResponse>> appointmentResponse = appointmentService.getAppointmentsByExecutive(executiveId, year, month);
             return ResponseEntity.status(HttpStatus.OK).body(appointmentResponse);
         } finally {
             MDC.clear();
@@ -95,7 +96,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/appointment/{appointmentId:\\d+}")
-    public ResponseEntity<AppointmentResponse> getAppointmentById(@PathVariable Long appointmentId) {
+    public ResponseEntity<EntityModel<AppointmentResponse>> getAppointmentById(@PathVariable Long appointmentId) {
         UUID transactionId = UUID.randomUUID();
         MDC.put("transactionId", transactionId.toString());
 
@@ -103,7 +104,7 @@ public class AppointmentController {
                 transactionId, appointmentId);
 
         try {
-            AppointmentResponse appointmentResponse = appointmentService.getAppointmentById(appointmentId);
+            EntityModel<AppointmentResponse> appointmentResponse = appointmentService.getAppointmentById(appointmentId);
             return ResponseEntity.status(HttpStatus.OK).body(appointmentResponse);
         } finally {
             MDC.clear();

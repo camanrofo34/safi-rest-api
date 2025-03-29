@@ -3,7 +3,9 @@ package unv.upb.safi.service.impl;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.AppointmentController;
 import unv.upb.safi.domain.dto.request.AppointmentRequest;
 import unv.upb.safi.domain.dto.response.AppointmentResponse;
 import unv.upb.safi.domain.entity.Appointment;
@@ -22,6 +24,9 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Service
 public class AppointmentServiceImpl implements AppointmentService {
@@ -42,7 +47,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Transactional
     @Override
-    public AppointmentResponse scheduleAppointment(Long studentId, AppointmentRequest appointmentRequest) throws AppointmentConflictException {
+    public EntityModel<AppointmentResponse> scheduleAppointment(Long studentId, AppointmentRequest appointmentRequest) throws AppointmentConflictException {
 
         Student student = getStudentById(studentId);
 
@@ -75,7 +80,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
-    public Set<AppointmentResponse> getAppointmentsByStudent(Long studentId,
+    public Set<EntityModel<AppointmentResponse>> getAppointmentsByStudent(Long studentId,
                                                              int year,
                                                              int month) {
         Student student = getStudentById(studentId);
@@ -95,7 +100,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
-    public Set<AppointmentResponse> getAppointmentsByExecutive(Long executiveId,
+    public Set<EntityModel<AppointmentResponse>> getAppointmentsByExecutive(Long executiveId,
                                                                int year,
                                                                int month) {
         Executive executive = getExecutiveById(executiveId);
@@ -115,20 +120,29 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
-    public AppointmentResponse getAppointmentById(Long appointmentId) {
+    public EntityModel<AppointmentResponse> getAppointmentById(Long appointmentId) {
         Appointment appointment = getAppointmentByIdOrThrow(appointmentId);
 
         return mapToResponse(appointment);
     }
 
-    private AppointmentResponse mapToResponse(Appointment appointment) {
-        return new AppointmentResponse(
+    private EntityModel<AppointmentResponse> mapToResponse(Appointment appointment) {
+        AppointmentResponse appointmentResponse = new AppointmentResponse(
                 appointment.getAppointmentId(),
                 appointment.getAppointmentTime(),
                 appointment.getAppointmentType(),
                 appointment.getAppointmentStatus(),
                 appointment.getExecutive().getUser().getUserId(),
                 appointment.getStudent().getUser().getUserId()
+        );
+
+        return mapToEntityModel(appointmentResponse);
+    }
+
+    private EntityModel<AppointmentResponse> mapToEntityModel(AppointmentResponse appointmentResponse) {
+        return EntityModel.of(appointmentResponse,
+                linkTo(methodOn(AppointmentController.class).getAppointmentById(appointmentResponse.getAppointmentId())).withSelfRel(),
+                linkTo(methodOn(AppointmentController.class).cancelAppointment(appointmentResponse.getStudentId(), appointmentResponse.getAppointmentId() )).withRel("cancel-Appointment")
         );
     }
 

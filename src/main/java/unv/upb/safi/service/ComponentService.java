@@ -1,24 +1,24 @@
 package unv.upb.safi.service;
 
 import jakarta.transaction.Transactional;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import unv.upb.safi.domain.dto.request.ComponentRequest;
 import unv.upb.safi.domain.dto.response.ComponentResponse;
 
 public interface ComponentService {
     @Transactional
-    ComponentResponse createComponent(ComponentRequest componentRequest);
+    EntityModel<ComponentResponse> createComponent(ComponentRequest componentRequest);
 
     @Transactional
     void deleteComponent(Long id);
 
-    ComponentResponse updateComponent(Long componentId, ComponentRequest componentRequest);
+    EntityModel<ComponentResponse> updateComponent(Long componentId, ComponentRequest componentRequest);
 
-    ComponentResponse getComponent(Long id);
+    EntityModel<ComponentResponse> getComponent(Long id);
 
-    Page<ComponentResponse> getComponents(Pageable pageable);
+    PagedModel<EntityModel<ComponentResponse>> getComponents(Pageable pageable);
 
-    Page<ComponentResponse> getComponentsByName(String name, Pageable pageable);
+    PagedModel<EntityModel<ComponentResponse>> getComponentsByName(String name, Pageable pageable);
 }

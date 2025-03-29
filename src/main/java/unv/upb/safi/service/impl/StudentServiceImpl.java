@@ -1,11 +1,10 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.StudentController;
 import unv.upb.safi.domain.dto.request.StudentRequest;
 import unv.upb.safi.domain.dto.response.StudentResponse;
 import unv.upb.safi.domain.entity.Faculty;
@@ -22,6 +21,9 @@ import unv.upb.safi.service.StudentService;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Service
 public class StudentServiceImpl implements StudentService {
@@ -47,7 +49,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Transactional
     @Override
-    public StudentResponse registerStudent(StudentRequest studentRequest) {
+    public EntityModel<StudentResponse> registerStudent(StudentRequest studentRequest) {
         User user = mapToUser(studentRequest);
         userRepository.save(user);
 
@@ -65,7 +67,7 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public StudentResponse updateStudent(Long studentId, StudentRequest studentRequest) {
+    public EntityModel<StudentResponse> updateStudent(Long studentId, StudentRequest studentRequest) {
         Student student = getStudentByIdOrThrow(studentId);
 
         User user = mapToUser(studentRequest);
@@ -92,7 +94,7 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public StudentResponse getStudent(Long studentId) {
+    public EntityModel<StudentResponse> getStudent(Long studentId) {
         Student student = getStudentByIdOrThrow(studentId);
 
         return mapToResponse(student);
@@ -116,8 +118,8 @@ public class StudentServiceImpl implements StudentService {
         return user;
     }
 
-    private StudentResponse mapToResponse(Student student) {
-        return new StudentResponse(
+    private EntityModel<StudentResponse> mapToResponse(Student student) {
+        StudentResponse studentResponse = new StudentResponse(
             student.getStudentId(),
             student.getUser().getFirstName(),
             student.getUser().getLastName(),
@@ -126,6 +128,11 @@ public class StudentServiceImpl implements StudentService {
             student.getUser().getRoles().stream().map(Role::getName).toList(),
             student.getFaculty().stream().map(Faculty::getFacultyName).toList()
         );
+
+        return EntityModel.of(studentResponse,
+                linkTo(methodOn(StudentController.class).getStudent(student.getStudentId())).withSelfRel(),
+                linkTo(methodOn(StudentController.class).deleteStudent(student.getStudentId())).withRel("delete-student")
+                );
     }
 
     private Student getStudentByIdOrThrow(Long studentId) {

@@ -1,6 +1,7 @@
 package unv.upb.safi.service;
 
 import jakarta.transaction.Transactional;
+import org.springframework.hateoas.EntityModel;
 import unv.upb.safi.domain.dto.request.WeeklyMenuRequest;
 import unv.upb.safi.domain.dto.response.WeeklyMenuResponse;
 
@@ -9,14 +10,14 @@ import java.util.Set;
 
 public interface WeeklyMenuService {
     @Transactional
-    WeeklyMenuResponse createWeeklyMenu (WeeklyMenuRequest weeklyMenuRequest);
+    EntityModel<WeeklyMenuResponse> createWeeklyMenu (WeeklyMenuRequest weeklyMenuRequest);
 
-    WeeklyMenuResponse updateWeeklyMenu(Long weeklyMenuId, WeeklyMenuRequest weeklyMenuRequest);
+    EntityModel<WeeklyMenuResponse> updateWeeklyMenu(Long weeklyMenuId, WeeklyMenuRequest weeklyMenuRequest);
 
     @Transactional
     void deleteWeeklyMenu(Long weeklyMenuId);
 
-    WeeklyMenuResponse getWeeklyMenu(Long weeklyMenuId);
+    EntityModel<WeeklyMenuResponse> getWeeklyMenu(Long weeklyMenuId);
 
-    Set<WeeklyMenuResponse> getAllWeeklyMenu();
+    Set<EntityModel<WeeklyMenuResponse>> getAllWeeklyMenu();
 }

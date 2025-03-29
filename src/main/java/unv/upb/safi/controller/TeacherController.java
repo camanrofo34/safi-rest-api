@@ -4,8 +4,10 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import unv.upb.safi.domain.dto.request.TeacherRequest;
 import unv.upb.safi.domain.dto.response.TeacherResponse;
 import unv.upb.safi.service.TeacherService;
+import unv.upb.safi.service.impl.TeacherServiceImpl;
 
 import java.util.UUID;
 
@@ -25,35 +28,35 @@ public class TeacherController {
     private final TeacherService teacherService;
 
     @Autowired
-    public TeacherController(TeacherService teacherService) {
+    public TeacherController(TeacherServiceImpl teacherService) {
         this.teacherService = teacherService;
     }
 
     @PostMapping
-    public ResponseEntity<TeacherResponse> registerTeacher(@Valid @RequestBody TeacherRequest teacherRequest) {
+    public ResponseEntity<EntityModel<TeacherResponse>> registerTeacher(@Valid @RequestBody TeacherRequest teacherRequest) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Registering teacher {}", transactionId, teacherRequest.getUsername());
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            TeacherResponse teacherResponse = teacherService.registerTeacher(teacherRequest);
+            EntityModel<TeacherResponse> response = teacherService.registerTeacher(teacherRequest);
             log.info("Transaction ID: {}, Teacher {} registered successfully", transactionId, teacherRequest.getUsername());
-            return ResponseEntity.status(HttpStatus.CREATED).body(teacherResponse);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } finally {
             MDC.clear();
         }
     }
 
     @PutMapping("/{teacherId:\\d+}")
-    public ResponseEntity<TeacherResponse> updateTeacher(@PathVariable Long teacherId, @Valid @RequestBody TeacherRequest teacherRequest) {
+    public ResponseEntity<EntityModel<TeacherResponse>> updateTeacher(@PathVariable Long teacherId, @Valid @RequestBody TeacherRequest teacherRequest) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Updating teacher with ID {}", transactionId, teacherId);
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            TeacherResponse teacherResponse = teacherService.updateTeacher(teacherId, teacherRequest);
+            EntityModel<TeacherResponse> response = teacherService.updateTeacher(teacherId, teacherRequest);
             log.info("Transaction ID: {}, Teacher with ID {} updated successfully", transactionId, teacherId);
-            return ResponseEntity.status(HttpStatus.OK).body(teacherResponse);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
         } finally {
             MDC.clear();
         }
@@ -75,35 +78,48 @@ public class TeacherController {
     }
 
     @GetMapping("/{teacherId:\\d+}")
-    public ResponseEntity<TeacherResponse> getTeacher(@PathVariable Long teacherId) {
+    public ResponseEntity<EntityModel<TeacherResponse>> getTeacher(@PathVariable Long teacherId) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Fetching teacher with ID {}", transactionId, teacherId);
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            TeacherResponse teacherResponse = teacherService.getTeacher(teacherId);
+            EntityModel<TeacherResponse> response = teacherService.getTeacher(teacherId);
             log.info("Transaction ID: {}, Teacher with ID {} fetched successfully", transactionId, teacherId);
-            return ResponseEntity.status(HttpStatus.OK).body(teacherResponse);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
         } finally {
             MDC.clear();
         }
     }
 
     @GetMapping
-    public ResponseEntity<Page<TeacherResponse>> getAllTeachers(
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "ASC") Sort.Direction direction
-    ) {
+    public ResponseEntity<PagedModel<EntityModel<TeacherResponse>>> getAllTeachers(
+            @PageableDefault(size = 10, sort = "teacherId") Pageable pageable) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Fetching all teachers", transactionId);
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            Page<TeacherResponse> teachers = teacherService.getAllTeachers(page, size, sortBy, direction);
+            PagedModel<EntityModel<TeacherResponse>> response = teacherService.getAllTeachers(pageable);
             log.info("Transaction ID: {}, All teachers fetched successfully", transactionId);
-            return ResponseEntity.status(HttpStatus.OK).body(teachers);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } finally {
+            MDC.clear();
+        }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<PagedModel<EntityModel<TeacherResponse>>> getTeachersByName(
+            @RequestParam String name,
+            @PageableDefault(size = 10, sort = "teacherId") Pageable pageable) {
+        UUID transactionId = UUID.randomUUID();
+        log.info("Transaction ID: {}, Searching teachers by name '{}'", transactionId, name);
+        MDC.put("transactionId", transactionId.toString());
+
+        try {
+            PagedModel<EntityModel<TeacherResponse>> response = teacherService.getTeachersByName(name, pageable);
+            log.info("Transaction ID: {}, Teachers retrieved by name", transactionId);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
         } finally {
             MDC.clear();
         }

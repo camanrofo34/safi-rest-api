@@ -1,13 +1,14 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.PqrsfController;
 import unv.upb.safi.domain.dto.request.PqrsfRequest;
 import unv.upb.safi.domain.dto.response.PqrsfResponse;
 import unv.upb.safi.domain.entity.Pqrsf;
@@ -18,6 +19,9 @@ import unv.upb.safi.repository.PqrsfRepository;
 import unv.upb.safi.repository.StudentRepository;
 import unv.upb.safi.service.PqrsfService;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 
 @Service
 public class PqrsfServiceImpl implements PqrsfService {
@@ -26,15 +30,22 @@ public class PqrsfServiceImpl implements PqrsfService {
 
     private final StudentRepository studentRepository;
 
+    private PagedResourcesAssembler<PqrsfResponse> pagedResourcesAssembler;
+
     @Autowired
     public PqrsfServiceImpl(PqrsfRepository pqrsfRepository, StudentRepository studentRepository) {
         this.pqrsfRepository = pqrsfRepository;
         this.studentRepository = studentRepository;
     }
 
+    @Autowired
+    public void setPagedResourcesAssembler(PagedResourcesAssembler<PqrsfResponse> pagedResourcesAssembler) {
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+    }
+
     @Transactional
     @Override
-    public PqrsfResponse createPqrsf(Long studentId, PqrsfRequest pqrsfRequest) {
+    public EntityModel<PqrsfResponse> createPqrsf(Long studentId, PqrsfRequest pqrsfRequest) {
         Student student = getStudentByIdOrThrow(studentId);
 
         Pqrsf pqrsf = new Pqrsf();
@@ -57,7 +68,7 @@ public class PqrsfServiceImpl implements PqrsfService {
     }
 
     @Override
-    public PqrsfResponse getPqrsf(Long requestId) {
+    public EntityModel<PqrsfResponse> getPqrsf(Long requestId) {
 
         Pqrsf pqrsf = getPqrsfByIdOrThrow(requestId);
 
@@ -65,17 +76,41 @@ public class PqrsfServiceImpl implements PqrsfService {
     }
 
     @Override
-    public Page<PqrsfResponse> getAllPqrsf(Pageable pageable) {
-        return pqrsfRepository.findAll(pageable).map(this::mapToResponse);
+    public PagedModel<EntityModel<PqrsfResponse>> getAllPqrsf(Pageable pageable) {
+        Page<PqrsfResponse> pqrsfResponses = pqrsfRepository.findAll(pageable).
+                map(pqrsf -> new PqrsfResponse(
+                        pqrsf.getPqrsfId(),
+                        pqrsf.getStudent().getStudentId(),
+                        pqrsf.getRequestType(),
+                        pqrsf.getDescription(),
+                        pqrsf.getSubmissionDate()
+                ));
+
+        return pagedResourcesAssembler.toModel(pqrsfResponses, this::mapToEntityModelToResourceModel);
     }
 
-    private PqrsfResponse mapToResponse(Pqrsf pqrsf) {
-        return new PqrsfResponse(
+    private EntityModel<PqrsfResponse> mapToResponse(Pqrsf pqrsf) {
+        PqrsfResponse pqrsfResponse = new PqrsfResponse(
                 pqrsf.getPqrsfId(),
                 pqrsf.getStudent().getStudentId(),
                 pqrsf.getRequestType(),
                 pqrsf.getDescription(),
                 pqrsf.getSubmissionDate()
+        );
+
+        return mapToEntityModel(pqrsfResponse);
+    }
+
+    private EntityModel<PqrsfResponse> mapToEntityModel(PqrsfResponse pqrsfResponse) {
+        return EntityModel.of(pqrsfResponse,
+                linkTo(methodOn(PqrsfController.class).getPqrsf(pqrsfResponse.getPqrsfId())).withSelfRel(),
+                linkTo(methodOn(PqrsfController.class).deletePqrsf(pqrsfResponse.getPqrsfId())).withRel("delete-pqrsf")
+        );
+    }
+
+    private EntityModel<PqrsfResponse> mapToEntityModelToResourceModel(PqrsfResponse pqrsfResponse) {
+        return EntityModel.of(pqrsfResponse,
+                linkTo(methodOn(PqrsfController.class).getPqrsf(pqrsfResponse.getPqrsfId())).withSelfRel()
         );
     }
 

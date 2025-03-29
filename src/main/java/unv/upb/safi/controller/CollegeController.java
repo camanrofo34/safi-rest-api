@@ -5,7 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -30,14 +34,14 @@ public class CollegeController {
     }
 
     @PostMapping
-    public ResponseEntity<CollegeResponse> createCollege(@RequestBody @Valid CollegeRequest collegeRequest) {
+    public ResponseEntity<EntityModel<CollegeResponse>> createCollege(@RequestBody @Valid CollegeRequest collegeRequest) {
         UUID transactionId = UUID.randomUUID();
         MDC.put("transactionId", transactionId.toString());
 
         log.info("Transaction ID: {}, Adding college {}", transactionId, collegeRequest.getName());
 
         try {
-            CollegeResponse collegeResponse = collegeService.addCollege(collegeRequest);
+            EntityModel<CollegeResponse> collegeResponse = collegeService.addCollege(collegeRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(collegeResponse);
         } finally {
             MDC.clear();
@@ -60,7 +64,7 @@ public class CollegeController {
     }
 
     @GetMapping("/{collegeId:\\d+}")
-    public ResponseEntity<CollegeResponse> getCollege(@PathVariable Long collegeId) {
+    public ResponseEntity<EntityModel<CollegeResponse>> getCollege(@PathVariable Long collegeId) {
         UUID transactionId = UUID.randomUUID();
         MDC.put("transactionId", transactionId.toString());
 
@@ -74,37 +78,31 @@ public class CollegeController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<CollegeResponse>> getColleges(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "collegeId") String sortBy,
-            @RequestParam(defaultValue = "ASC") Sort.Direction direction) {
+    public ResponseEntity<PagedModel<EntityModel<CollegeResponse>>> getColleges(
+            @PageableDefault(size = 10, sort = "collegeId", direction = Sort.Direction.DESC) Pageable pageable) {
         UUID transactionId = UUID.randomUUID();
         MDC.put("transactionId", transactionId.toString());
 
         log.info("Transaction ID: {}, Fetching all colleges", transactionId);
 
         try {
-            return ResponseEntity.status(HttpStatus.OK).body(collegeService.getColleges(page, size, sortBy, direction));
+            return ResponseEntity.status(HttpStatus.OK).body(collegeService.getColleges(pageable));
         } finally {
             MDC.clear();
         }
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Page<CollegeResponse>> getCollegesByName(
+    public ResponseEntity<PagedModel<EntityModel<CollegeResponse>>> getCollegesByName(
             @RequestParam String name,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "collegeId") String sortBy,
-            @RequestParam(defaultValue = "ASC") Sort.Direction direction) {
+            @PageableDefault(size = 10, sort = "collegeId", direction = Sort.Direction.DESC) Pageable pageable) {
         UUID transactionId = UUID.randomUUID();
         MDC.put("transactionId", transactionId.toString());
 
         log.info("Transaction ID: {}, Searching colleges by name '{}'", transactionId, name);
 
         try {
-            return ResponseEntity.status(HttpStatus.OK).body(collegeService.getCollegesByName(name, page, size, sortBy, direction));
+            return ResponseEntity.status(HttpStatus.OK).body(collegeService.getCollegesByName(name, pageable));
         } finally {
             MDC.clear();
         }

@@ -4,21 +4,23 @@ import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import unv.upb.safi.domain.dto.request.TeacherRequest;
 import unv.upb.safi.domain.dto.response.TeacherResponse;
 
 public interface TeacherService {
     @Transactional
-    TeacherResponse registerTeacher(TeacherRequest teacherRequest);
+    EntityModel<TeacherResponse> registerTeacher(TeacherRequest teacherRequest);
 
-    TeacherResponse getTeacher(Long teacherId);
+    EntityModel<TeacherResponse> getTeacher(Long teacherId);
 
-    TeacherResponse updateTeacher(Long teacherId, TeacherRequest teacherRequest);
+    EntityModel<TeacherResponse> updateTeacher(Long teacherId, TeacherRequest teacherRequest);
 
     @Transactional
     void deleteTeacher(Long teacherId);
 
-    Page<TeacherResponse> getAllTeachers(Pageable pageable);
+    PagedModel<EntityModel<TeacherResponse>> getAllTeachers(Pageable pageable);
 
-    Page<TeacherResponse> getTeachersByName(String name, Pageable pageable);
+    PagedModel<EntityModel<TeacherResponse>> getTeachersByName(String name, Pageable pageable);
 }

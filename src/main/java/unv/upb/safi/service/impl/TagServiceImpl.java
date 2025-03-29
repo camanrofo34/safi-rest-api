@@ -1,14 +1,14 @@
 package unv.upb.safi.service.impl;
 
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.TagController;
 import unv.upb.safi.domain.dto.request.TagRequest;
 import unv.upb.safi.domain.dto.response.TagResponse;
 import unv.upb.safi.domain.entity.Tag;
@@ -16,74 +16,96 @@ import unv.upb.safi.exception.entityNotFoundException.TagNotFoundException;
 import unv.upb.safi.repository.TagRepository;
 import unv.upb.safi.service.TagService;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 
 @Service
 public class TagServiceImpl implements TagService {
 
     private final TagRepository tagRepository;
 
+    private PagedResourcesAssembler<TagResponse> pagedResourcesAssembler;
 
     @Autowired
     public TagServiceImpl(TagRepository tagRepository) {
         this.tagRepository = tagRepository;
     }
 
+    @Autowired
+    public void setPagedResourcesAssembler(PagedResourcesAssembler<TagResponse> pagedResourcesAssembler) {
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+    }
+
     @Transactional
     @Override
-    public TagResponse createTag(TagRequest tagRequest) {
-        logger.info("Transaction ID: {}, Adding tag {}",
-            MDC.get("transactionId") ,tagRequest.getTagName());
+    public EntityModel<TagResponse> createTag(TagRequest tagRequest) {
+        Tag tag = new Tag();
+        tag.setTagName(tagRequest.getTagName());
+        tag = tagRepository.save(tag);
 
-            Tag tag = new Tag();
-            tag.setTagName(tagRequest.getTagName());
-            tag = tagRepository.save(tag);
-            logger.info("Transaction ID: {}, Tag added successfully", MDC.get("transactionId"));
-            return mapToResponse(tag);
+        return mapToResponse(tag);
     }
 
     @Override
-    public TagResponse updateTag(Long tagId, TagRequest tagRequest) {
-        logger.info("Transaction ID: {}, Updating tag {}",
-            MDC.get("transactionId") ,tagRequest.getTagName());
-            Tag tag = getTagByIdOrThrow(tagId);
-            tag.setTagName(tagRequest.getTagName());
-            tag = tagRepository.save(tag);
-            logger.info("Transaction ID: {}, Tag updated successfully", MDC.get("transactionId"));
-            return mapToResponse(tag);
+    public EntityModel<TagResponse> updateTag(Long tagId, TagRequest tagRequest) {
+        Tag tag = getTagByIdOrThrow(tagId);
+        tag.setTagName(tagRequest.getTagName());
+        tag = tagRepository.save(tag);
+
+        return mapToResponse(tag);
     }
 
     @Override
-    public TagResponse getTag(Long tagId) {
-        logger.info("Transaction ID: {}, Getting tag with id: {}", MDC.get("transactionId"), tagId);
-            Tag tag = getTagByIdOrThrow(tagId);
-            return mapToResponse(tag);
+    public EntityModel<TagResponse> getTag(Long tagId) {
+        Tag tag = getTagByIdOrThrow(tagId);
+
+        return mapToResponse(tag);
     }
 
     @Transactional
     @Override
     public void deleteTag(Long tagId) {
-        logger.info("Transaction ID: {}, Deleting tag with id: {}", MDC.get("transactionId"), tagId);
 
         Tag tag = getTagByIdOrThrow(tagId);
 
         tagRepository.delete(tag);
-        logger.info("Transaction ID: {}, Deleted tag {}", MDC.get("transactionId"), tagId);
     }
 
     @Override
-    public Page<TagResponse> getAllTags(int page, int size, String sortBy, Sort.Direction direction) {
-        logger.info("Transaction ID: {}, Getting all tags", MDC.get("transactionId"));
+    public PagedModel<EntityModel<TagResponse>> getAllTags(Pageable pageable) {
 
-        return tagRepository.findAll(
-            PageRequest.of(page, size, Sort.by(direction, sortBy))
-        ).map(this::mapToResponse);
+        Page<TagResponse> tagResponses = tagRepository.findAll(pageable)
+        .map(
+                tag -> new TagResponse(
+                    tag.getTagId(),
+                    tag.getTagName()
+                )
+        );
+
+        return pagedResourcesAssembler.toModel(tagResponses, this::mapToEntityModelToResourceModel);
     }
 
 
-    private TagResponse mapToResponse(Tag tag) {
-        return new TagResponse(
+    private EntityModel<TagResponse> mapToResponse(Tag tag) {
+        TagResponse tagResponse = new TagResponse(
             tag.getTagId(),
             tag.getTagName()
+        );
+
+        return mapToEntityModel(tagResponse);
+    }
+
+    private EntityModel<TagResponse> mapToEntityModel(TagResponse tagResponse) {
+        return EntityModel.of(tagResponse,
+                linkTo(methodOn(TagController.class).getTag(tagResponse.getTagId())).withSelfRel(),
+                linkTo(methodOn(TagController.class).deleteTag(tagResponse.getTagId())).withRel("delete-tag")
+        );
+    }
+
+    private EntityModel<TagResponse> mapToEntityModelToResourceModel(TagResponse tagResponse) {
+        return EntityModel.of(tagResponse,
+                linkTo(methodOn(TagController.class).getTag(tagResponse.getTagId())).withSelfRel()
         );
     }
 

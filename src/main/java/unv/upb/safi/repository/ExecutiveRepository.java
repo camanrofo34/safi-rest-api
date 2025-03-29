@@ -20,5 +20,5 @@ public interface ExecutiveRepository extends JpaRepository<Executive, Long> {
     @Query("SELECT e FROM Executive e " +
             "WHERE UPPER(e.user.firstName) LIKE UPPER(CONCAT('%', :userSearch, '%'))" +
             "OR UPPER(e.user.lastName) LIKE UPPER(CONCAT('%', :userSearch, '%')) ")
-    Page<Executive> findExecutiveNameContainingIgnoreCase(@NonNull String userSearch, @NonNull Pageable pageable);
+    Page<Executive> findAllByExecutiveNameContainingIgnoreCase(@NonNull String userSearch, @NonNull Pageable pageable);
 }

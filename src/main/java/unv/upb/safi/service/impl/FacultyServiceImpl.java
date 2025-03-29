@@ -4,7 +4,11 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.FacultyController;
 import unv.upb.safi.domain.dto.request.FacultyRequest;
 import unv.upb.safi.domain.dto.response.FacultyResponse;
 import unv.upb.safi.domain.entity.College;
@@ -16,6 +20,9 @@ import unv.upb.safi.repository.FacultyRepository;
 import unv.upb.safi.service.FacultyService;
 import unv.upb.safi.util.SearchNormalizerUtil;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 @Service
 public class FacultyServiceImpl implements FacultyService {
 
@@ -24,6 +31,8 @@ public class FacultyServiceImpl implements FacultyService {
     private final CollegeRepository collegeRepository;
 
     private final SearchNormalizerUtil searchNormalizerUtil;
+
+    private PagedResourcesAssembler<FacultyResponse> pagedResourcesAssembler;
 
     @Autowired
     public FacultyServiceImpl(FacultyRepository facultyRepository,
@@ -34,9 +43,14 @@ public class FacultyServiceImpl implements FacultyService {
         this.searchNormalizerUtil = searchNormalizerUtil;
     }
 
+    @Autowired
+    public void setPagedResourcesAssembler(PagedResourcesAssembler<FacultyResponse> pagedResourcesAssembler) {
+        this.pagedResourcesAssembler = pagedResourcesAssembler;
+    }
+
     @Transactional
     @Override
-    public FacultyResponse addFaculty(FacultyRequest facultyRequest) {
+    public EntityModel<FacultyResponse> addFaculty(FacultyRequest facultyRequest) {
         Faculty faculty = new Faculty();
         faculty.setFacultyName(facultyRequest.getFacultyName());
         faculty.setCollege(getCollegeByIdOrThrow(facultyRequest.getCollegeId()));
@@ -47,7 +61,7 @@ public class FacultyServiceImpl implements FacultyService {
     }
 
     @Override
-    public FacultyResponse updateFaculty(Long facultyId, FacultyRequest facultyRequest){
+    public EntityModel<FacultyResponse> updateFaculty(Long facultyId, FacultyRequest facultyRequest){
 
         Faculty faculty = getFacultyByIdOrThrow(facultyId);
         faculty.setFacultyName(facultyRequest.getFacultyName());
@@ -66,31 +80,61 @@ public class FacultyServiceImpl implements FacultyService {
     }
 
     @Override
-    public FacultyResponse getFaculty(Long id) {
+    public EntityModel<FacultyResponse> getFaculty(Long id) {
         Faculty faculty = getFacultyByIdOrThrow(id);
 
         return mapToResponse(faculty);
     }
 
     @Override
-    public Page<FacultyResponse> getFacultiesByCollegeId(Long collegeId, Pageable pageable) {
+    public PagedModel<EntityModel<FacultyResponse>> getFacultiesByCollegeId(Long collegeId, Pageable pageable) {
         College college = getCollegeByIdOrThrow(collegeId);
 
-        return facultyRepository.findAllByCollege(college, pageable)
-                .map(this::mapToResponse);
+        Page<FacultyResponse> facultyResponses = facultyRepository.findAllByCollege(college, pageable)
+                .map(faculty ->
+                        new FacultyResponse(
+                                faculty.getFacultyId(),
+                                faculty.getFacultyName(),
+                                faculty.getCollege().getName()
+                        ));
+
+        return pagedResourcesAssembler.toModel(facultyResponses, this::mapToEntityModelToResourceModel);
     }
 
     @Override
-    public Page<FacultyResponse> getFacultiesByName(String name, Pageable pageable) {
-        return facultyRepository.findByFacultyNameContainingIgnoreCase(searchNormalizerUtil.normalize(name), pageable)
-                .map(this::mapToResponse);
+    public PagedModel<EntityModel<FacultyResponse>> getFacultiesByName(String name, Pageable pageable) {
+        Page<FacultyResponse> facultyResponses = facultyRepository.findAllByFacultyNameContainingIgnoreCase(
+                searchNormalizerUtil.normalize(name), pageable)
+                .map(faculty ->
+                        new FacultyResponse(
+                                faculty.getFacultyId(),
+                                faculty.getFacultyName(),
+                                faculty.getCollege().getName()
+                        ));
+
+        return pagedResourcesAssembler.toModel(facultyResponses, this::mapToEntityModelToResourceModel);
     }
 
-    private FacultyResponse mapToResponse(Faculty faculty) {
-        return new FacultyResponse(
+    private EntityModel<FacultyResponse> mapToResponse(Faculty faculty) {
+        FacultyResponse facultyResponse = new FacultyResponse(
                 faculty.getFacultyId(),
                 faculty.getFacultyName(),
                 faculty.getCollege().getName()
+        );
+
+        return mapToEntityModel(facultyResponse);
+    }
+
+    private EntityModel<FacultyResponse> mapToEntityModel(FacultyResponse facultyResponse) {
+        return EntityModel.of(facultyResponse,
+                linkTo(methodOn(FacultyController.class).getFaculty(facultyResponse.getFacultyId())).withSelfRel(),
+                linkTo(methodOn(FacultyController.class).deleteFaculty(facultyResponse.getFacultyId())).withRel("delete-faculty")
+                );
+    }
+
+    private EntityModel<FacultyResponse> mapToEntityModelToResourceModel(FacultyResponse facultyResponse) {
+        return EntityModel.of(facultyResponse,
+                linkTo(methodOn(FacultyController.class).getFaculty(facultyResponse.getFacultyId())).withSelfRel()
         );
     }
 

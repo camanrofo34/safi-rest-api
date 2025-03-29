@@ -1,12 +1,13 @@
 package unv.upb.safi.domain.dto.response;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 import java.util.List;
 
 @AllArgsConstructor
+@Getter
 public class TeacherResponse {
 
     private Long teacherId;

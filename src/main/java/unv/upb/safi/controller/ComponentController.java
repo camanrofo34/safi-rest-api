@@ -5,7 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -31,13 +35,13 @@ public class ComponentController {
     }
 
     @PostMapping
-    public ResponseEntity<ComponentResponse> create(@Valid @RequestBody ComponentRequest componentRequest) {
+    public ResponseEntity<EntityModel<ComponentResponse>> createComponent(@Valid @RequestBody ComponentRequest componentRequest) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Adding component {}", transactionId, componentRequest.getComponentName());
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            ComponentResponse response = componentService.createComponent(componentRequest);
+            EntityModel<ComponentResponse> response = componentService.createComponent(componentRequest);
             log.info("Transaction ID: {}, Component added", transactionId);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } finally {
@@ -46,7 +50,7 @@ public class ComponentController {
     }
 
     @DeleteMapping("/{componentId:\\d+}")
-    public ResponseEntity<Void> delete(@PathVariable Long componentId) {
+    public ResponseEntity<Void> deleteComponent(@PathVariable Long componentId) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Deleting component with id {}", transactionId, componentId);
         MDC.put("transactionId", transactionId.toString());
@@ -61,13 +65,13 @@ public class ComponentController {
     }
 
     @PutMapping("/{componentId:\\d+}")
-    public ResponseEntity<ComponentResponse> update(@PathVariable Long componentId, @Valid @RequestBody ComponentRequest componentRequest) {
+    public ResponseEntity<EntityModel<ComponentResponse>> updateComponent(@PathVariable Long componentId, @Valid @RequestBody ComponentRequest componentRequest) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Updating component with id {}", transactionId, componentId);
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            ComponentResponse response = componentService.updateComponent(componentId, componentRequest);
+            EntityModel<ComponentResponse> response = componentService.updateComponent(componentId, componentRequest);
             log.info("Transaction ID: {}, Component updated", transactionId);
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } finally {
@@ -76,13 +80,13 @@ public class ComponentController {
     }
 
     @GetMapping("/{componentId:\\d+}")
-    public ResponseEntity<ComponentResponse> get(@PathVariable Long componentId) {
+    public ResponseEntity<EntityModel<ComponentResponse>> getComponent(@PathVariable Long componentId) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Getting component with id {}", transactionId, componentId);
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            ComponentResponse response = componentService.getComponent(componentId);
+            EntityModel<ComponentResponse> response = componentService.getComponent(componentId);
             log.info("Transaction ID: {}, Component retrieved", transactionId);
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } finally {
@@ -91,16 +95,14 @@ public class ComponentController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<ComponentResponse>> getAll(@RequestParam(defaultValue = "0") int page,
-                                                          @RequestParam(defaultValue = "10") int size,
-                                                          @RequestParam(defaultValue = "componentName") String sortBy,
-                                                          @RequestParam(defaultValue = "ASC") Sort.Direction direction) {
+    public ResponseEntity<PagedModel<EntityModel<ComponentResponse>>> getAllComponents(
+            @PageableDefault(size = 10, sort = "componentId", direction = Sort.Direction.DESC) Pageable pageable) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Getting all components", transactionId);
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            Page<ComponentResponse> response = componentService.getComponents(page, size, sortBy, direction);
+            PagedModel<EntityModel<ComponentResponse>> response = componentService.getComponents(pageable);
             log.info("Transaction ID: {}, Components retrieved", transactionId);
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } finally {
@@ -109,17 +111,14 @@ public class ComponentController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Page<ComponentResponse>> searchByName(@RequestParam String name,
-                                                               @RequestParam(defaultValue = "0") int page,
-                                                               @RequestParam(defaultValue = "10") int size,
-                                                               @RequestParam(defaultValue = "componentName") String sortBy,
-                                                               @RequestParam(defaultValue = "ASC") Sort.Direction direction) {
+    public ResponseEntity<PagedModel<EntityModel<ComponentResponse>>> searchByComponentName(@RequestParam String name,
+                                                                         @PageableDefault(size = 10, sort = "componentId", direction = Sort.Direction.DESC) Pageable pageable) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Searching components by name '{}'", transactionId, name);
         MDC.put("transactionId", transactionId.toString());
 
         try {
-            Page<ComponentResponse> response = componentService.getComponentsByName(name, page, size, sortBy, direction);
+            PagedModel<EntityModel<ComponentResponse>> response = componentService.getComponentsByName(name, pageable);
             log.info("Transaction ID: {}, Components retrieved by name", transactionId);
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } finally {

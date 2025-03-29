@@ -3,6 +3,7 @@ package unv.upb.safi.domain.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -22,11 +23,12 @@ public class StudentRequest {
     private String username;
 
     @NotBlank
+    @Setter
     private String password;
 
     @NotNull
     private List<Long> rolesId;
 
-    @NotBlank
+    @NotNull
     private List<Long> facultyId;
 }

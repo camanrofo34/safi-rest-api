@@ -21,6 +21,6 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     Page<News> findAllByTags(@NonNull Set<Tag> tags, @NonNull Pageable pageable);
 
     @NonNull
-    Page<News> findByNewsTitleContainingIgnoreCase(@NonNull String title, @NonNull Pageable pageable);
+    Page<News> findAllByNewsTitleContainingIgnoreCase(@NonNull String title, @NonNull Pageable pageable);
 
 }

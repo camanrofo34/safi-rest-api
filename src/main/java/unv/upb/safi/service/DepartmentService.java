@@ -4,21 +4,23 @@ import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import unv.upb.safi.domain.dto.request.DepartmentRequest;
 import unv.upb.safi.domain.dto.response.DepartmentResponse;
 
 public interface DepartmentService {
     @Transactional
-    DepartmentResponse createDepartment(DepartmentRequest departmentRequest);
+    EntityModel<DepartmentResponse> createDepartment(DepartmentRequest departmentRequest);
 
     @Transactional
     void deleteDepartment(Long id);
 
-    DepartmentResponse updateDepartment(Long departmentId, DepartmentRequest departmentRequest);
+    EntityModel<DepartmentResponse> updateDepartment(Long departmentId, DepartmentRequest departmentRequest);
 
-    DepartmentResponse getDepartmentById(Long departmentId);
+    EntityModel<DepartmentResponse> getDepartmentById(Long departmentId);
 
-    Page<DepartmentResponse> getDepartments(Pageable pageable);
+    PagedModel<EntityModel<DepartmentResponse>> getDepartments(Pageable pageable);
 
-    Page<DepartmentResponse> getDepartmentsByName(String name, Pageable pageable);
+    PagedModel<EntityModel<DepartmentResponse>> getDepartmentsByName(String name, Pageable pageable);
 }

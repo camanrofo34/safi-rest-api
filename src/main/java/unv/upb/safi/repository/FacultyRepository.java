@@ -17,6 +17,6 @@ public interface FacultyRepository extends JpaRepository<Faculty, Long> {
     Page<Faculty> findAllByCollege(@NonNull College college, @NonNull Pageable pageable);
 
     @NonNull
-    Page<Faculty> findByFacultyNameContainingIgnoreCase(@NonNull String name, @NonNull Pageable pageable);
+    Page<Faculty> findAllByFacultyNameContainingIgnoreCase(@NonNull String name, @NonNull Pageable pageable);
 
 }

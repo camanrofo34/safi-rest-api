@@ -5,7 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.stereotype.Service;
+import unv.upb.safi.controller.WeeklyMenuController;
 import unv.upb.safi.domain.dto.request.WeeklyMenuRequest;
 import unv.upb.safi.domain.dto.response.WeeklyMenuResponse;
 import unv.upb.safi.domain.entity.WeeklyMenu;
@@ -17,6 +19,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 @Service
 public class WeeklyMenuServiceImpl implements WeeklyMenuService {
 
@@ -27,20 +32,23 @@ public class WeeklyMenuServiceImpl implements WeeklyMenuService {
         this.weeklyMenuRepository = weeklyMenuRepository;
     }
 
-    @Transactional
     @Override
-    public WeeklyMenuResponse createWeeklyMenu(WeeklyMenuRequest weeklyMenuRequest) {
+    public EntityModel<WeeklyMenuResponse> createWeeklyMenu(WeeklyMenuRequest weeklyMenuRequest) {
             WeeklyMenu weeklyMenu = new WeeklyMenu();
             weeklyMenu.setRestaurantName(weeklyMenuRequest.getRestaurantName());
             weeklyMenu.setRestaurantLink(weeklyMenuRequest.getRestaurantLink());
             weeklyMenu.setMenuLink(weeklyMenuRequest.getMenuLink());
             weeklyMenu = weeklyMenuRepository.save(weeklyMenu);
 
+            System.out.println(weeklyMenu.getRestaurantName());
+            System.out.println(weeklyMenu.getRestaurantLink());
+            System.out.println(weeklyMenu.getMenuLink());
+
             return mapToResponse(weeklyMenu);
     }
 
     @Override
-    public WeeklyMenuResponse updateWeeklyMenu(Long weeklyMenuId, WeeklyMenuRequest weeklyMenuRequest) {
+    public EntityModel<WeeklyMenuResponse> updateWeeklyMenu(Long weeklyMenuId, WeeklyMenuRequest weeklyMenuRequest) {
         WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
 
         weeklyMenu.setRestaurantName(weeklyMenuRequest.getRestaurantName());
@@ -60,26 +68,30 @@ public class WeeklyMenuServiceImpl implements WeeklyMenuService {
     }
 
     @Override
-    public WeeklyMenuResponse getWeeklyMenu(Long weeklyMenuId) {
+    public EntityModel<WeeklyMenuResponse> getWeeklyMenu(Long weeklyMenuId) {
         WeeklyMenu weeklyMenu = getWeeklyMenuByIdOrThrow(weeklyMenuId);
 
         return mapToResponse(weeklyMenu);
     }
 
     @Override
-    public Set<WeeklyMenuResponse> getAllWeeklyMenu(){
+    public Set<EntityModel<WeeklyMenuResponse>> getAllWeeklyMenu(){
         List<WeeklyMenu> weeklyMenus = weeklyMenuRepository.findAll();
 
         return weeklyMenus.stream().map(this::mapToResponse)
                 .collect(Collectors.toSet());
     }
 
-    private WeeklyMenuResponse mapToResponse(WeeklyMenu weeklyMenu) {
-        return new WeeklyMenuResponse(
+    private EntityModel<WeeklyMenuResponse> mapToResponse(WeeklyMenu weeklyMenu) {
+        WeeklyMenuResponse weeklyMenuResponse = new WeeklyMenuResponse(
                 weeklyMenu.getWeeklyMenuId(),
                 weeklyMenu.getRestaurantName(),
                 weeklyMenu.getMenuLink(),
                 weeklyMenu.getRestaurantLink()
+        );
+
+        return EntityModel.of(weeklyMenuResponse,
+                linkTo(methodOn(WeeklyMenuController.class).getWeeklyMenu(weeklyMenuResponse.getWeeklyMenuId())).withSelfRel()
         );
     }
 
