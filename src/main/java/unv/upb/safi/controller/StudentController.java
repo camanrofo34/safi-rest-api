@@ -33,7 +33,8 @@ public class StudentController {
     }
 
     @PostMapping
-    public ResponseEntity<EntityModel<StudentResponse>> registerStudent(@Valid @RequestBody StudentRequest studentRequest) {
+    public ResponseEntity<EntityModel<StudentResponse>> registerStudent(@Valid @RequestBody StudentRequest studentRequest,
+                                                                        @RequestParam String verificationCode) {
         UUID transactionId = UUID.randomUUID();
         log.info("Transaction ID: {}, Registering student {}", transactionId, studentRequest.getUsername());
         MDC.put("transactionId", transactionId.toString());
@@ -42,7 +43,7 @@ public class StudentController {
             // Encode the password before saving
             studentRequest.setPassword(passwordEncoder.encode(studentRequest.getPassword()));
             // Call the service to register the student
-            EntityModel<StudentResponse> response = studentService.registerStudent(studentRequest);
+            EntityModel<StudentResponse> response = studentService.registerStudent(studentRequest, verificationCode);
             log.info("Transaction ID: {}, Student {} registered successfully", transactionId, studentRequest.getUsername());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } finally {

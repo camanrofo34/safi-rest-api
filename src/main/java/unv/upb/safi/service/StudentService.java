@@ -7,7 +7,7 @@ import unv.upb.safi.domain.dto.response.StudentResponse;
 
 public interface StudentService {
     @Transactional
-    EntityModel<StudentResponse> registerStudent(StudentRequest studentRequest);
+    EntityModel<StudentResponse> registerStudent(StudentRequest studentRequest, String verificationCode);
 
     EntityModel<StudentResponse> updateStudent(Long studentId, StudentRequest studentRequest);
 

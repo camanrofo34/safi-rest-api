@@ -17,6 +17,7 @@ import unv.upb.safi.repository.RoleRepository;
 import unv.upb.safi.repository.StudentRepository;
 import unv.upb.safi.repository.UserRepository;
 import unv.upb.safi.service.StudentService;
+import unv.upb.safi.util.MailUtil;
 
 import java.util.Objects;
 import java.util.Set;
@@ -36,20 +37,29 @@ public class StudentServiceImpl implements StudentService {
 
     private final RoleRepository roleRepository;
 
+    private final MailUtil mailUtil;
+
     @Autowired
     public StudentServiceImpl(StudentRepository studentRepository,
                               UserRepository userRepository,
                               FacultyRepository facultyRepository,
-                              RoleRepository roleRepository) {
+                              RoleRepository roleRepository,
+                              MailUtil mailUtil) {
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
         this.facultyRepository = facultyRepository;
         this.roleRepository = roleRepository;
+        this.mailUtil = mailUtil;
     }
 
     @Transactional
     @Override
-    public EntityModel<StudentResponse> registerStudent(StudentRequest studentRequest) {
+    public EntityModel<StudentResponse> registerStudent(StudentRequest studentRequest, String verificationCode) {
+
+        if (!mailUtil.verifyCode(studentRequest.getEmail(), verificationCode)) {
+            throw new IllegalArgumentException("Invalid verification code");
+        }
+
         User user = mapToUser(studentRequest);
         userRepository.save(user);
 

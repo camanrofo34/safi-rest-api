@@ -84,11 +84,6 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    @Bean
-    public UserDetailsService userDetailsService(UserRepository userRepository, RoleRepository roleRepository) {
-        return new UserServiceImpl(userRepository, roleRepository);
-    }
-
 
 
     /**
